@@ -8,9 +8,10 @@
 
 - Next.js 15 + App Router
 - Tailwind CSS
-- SQLite（`better-sqlite3`）
+- SQLite（better-sqlite3）
 - 本地文件上传目录：`uploads/`
-- AI service 先走 mock，真实模型接口已预留`r`n- Playwright 端到端自动验收
+- AI service 先走 mock，真实模型接口已预留
+- Playwright 端到端自动验收
 
 ## 已实现页面
 
@@ -46,27 +47,32 @@ student-problem-tracker/
 │  ├─ not-found.tsx
 │  └─ page.tsx
 ├─ components/
+│  ├─ ui/badge.tsx
 │  ├─ app-shell.tsx
 │  ├─ login-form.tsx
 │  ├─ metric-card.tsx
 │  ├─ review-queue-item.tsx
 │  ├─ section-card.tsx
-│  ├─ upload-form.tsx
-│  └─ ui/badge.tsx
+│  └─ upload-form.tsx
 ├─ lib/
 │  ├─ db/index.ts
 │  ├─ services/ai/index.ts
 │  ├─ mock-data.ts
 │  ├─ types.ts
 │  └─ utils.ts
+├─ tests/
+│  ├─ e2e/closure.spec.ts
+│  └─ fixtures/sample-upload.png
 ├─ uploads/
 ├─ .env.example
 ├─ middleware.ts
 ├─ next.config.mjs
 ├─ package.json
+├─ playwright.config.ts
 ├─ postcss.config.mjs
+├─ README.md
 ├─ tailwind.config.ts
-├─ playwright.config.ts`r`n├─ tests/`r`n│  ├─ e2e/closure.spec.ts`r`n│  └─ fixtures/sample-upload.png`r`n└─ tsconfig.json
+└─ tsconfig.json
 ```
 
 ## 数据表
@@ -147,7 +153,32 @@ http://localhost:3000/login
 ```bash
 npm run typecheck
 npm run build
+npm run test:e2e
 ```
+
+## Playwright 验收覆盖
+
+- `/login`
+- `/dashboard`
+- `/upload`
+- `/diagnosis/[id]`
+- `/weekly-report/[id]`
+- `/review-queue`
+
+自动验收闭环：
+
+1. 登录
+2. 上传测试图片
+3. 自动生成诊断页面并提取 `diagnosisId`
+4. 自动进入周总结页面并提取 `weeklyReportId`
+5. 审核台执行修改/通过/驳回
+6. 自动保存截图、trace、JSON 报告和浏览器日志
+
+测试产物目录：
+
+- `playwright-report/`
+- `test-results/results.json`
+- `test-results/artifacts/`
 
 ## 已打通流程
 
@@ -197,8 +228,6 @@ NEXT_PUBLIC_APP_NAME=Student Problem Tracker
 如果你已经有远程仓库地址，执行：
 
 ```bash
-git init
-git checkout -b feature/mvp-init
 git remote add github <YOUR_GITHUB_REPO_URL>
 git remote add gitee <YOUR_GITEE_REPO_URL>
 git remote -v
@@ -233,13 +262,17 @@ git push gitee feature/mvp-init
 - 诊断结果展示流程
 - 周总结展示流程
 - 审核台流程
+- 审核后 `repair_tasks` / `weekly_reports` / `change_logs` 联动
 - AI service 预留接口
+- Playwright 端到端自动验收
 - README 与运行说明
 
 本地测试结果：
 
 - `npm run typecheck` 通过
 - `npm run build` 通过
-- 本地启动后验证 `/login`、`/dashboard`、`/review-queue` 响应正常
-- 本地调用上传 API 成功生成新的 `diagnosisId` 和 `weeklyReportId`
-- 新生成诊断页与周总结页可正常访问
+- `npm run test:e2e` 通过
+- Playwright 覆盖指定 6 条页面路径
+- 自动保存截图、trace、JSON 报告到 `test-results/` 与 `playwright-report/`
+- 自动验证上传后会生成新的 `diagnosisId` 与 `weeklyReportId`
+- 自动验证审核修改/通过/驳回均会落库
