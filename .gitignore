@@ -1,0 +1,13 @@
+.next
+node_modules
+dist
+coverage
+*.log
+*.tsbuildinfo
+.env
+.env.local
+data
+playwright-report
+test-results
+uploads/*
+!uploads/.gitkeep
