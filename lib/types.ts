@@ -22,6 +22,13 @@ export interface WeeklyReportPayload {
   next_week_plan: string[];
 }
 
+export interface MemorySummary {
+  stable_tags: string[];
+  repeated_error_tags: string[];
+  last_3_weeks_focus: string[];
+  next_priority: string;
+}
+
 export interface DashboardSnapshot {
   studentName: string;
   currentStage: string;

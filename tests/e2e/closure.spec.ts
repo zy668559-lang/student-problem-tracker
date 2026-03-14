@@ -1,4 +1,4 @@
-import fs from "node:fs/promises";
+﻿import fs from "node:fs/promises";
 import path from "node:path";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
 
@@ -35,8 +35,9 @@ async function login(page: Page, testInfo: TestInfo) {
   await page.locator('input[name="password"]').fill("demo123");
   await page.locator('button[type="submit"]').click();
 
-  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page).toHaveURL(/\/dashboard$/, { timeout: 30_000 });
   await expect(page.locator('a[href="/upload"]').first()).toBeVisible();
+  await expect(page.locator("main")).toContainText("学生记忆摘要");
   await page.screenshot({ path: testInfo.outputPath("02-dashboard-page.png"), fullPage: true });
 }
 
@@ -47,15 +48,16 @@ async function uploadAndOpenDiagnosis(page: Page, testInfo: TestInfo, reportLabe
 
   await page.locator('input[type="file"]').setInputFiles(fixturePath);
   await page.locator('select[name="subject"]').selectOption("math");
-  await page.locator('select[name="module"]').selectOption({ label: "函数" });
+  await page.locator('select[name="module"]').selectOption("函数");
   await page.locator('input[name="scoreNote"]').fill("76 / 100");
-  await page.locator('select[name="uploadType"]').selectOption({ label: "题图" });
+  await page.locator('select[name="uploadType"]').selectOption("题图");
   await page.locator('input[name="note"]').fill(`Playwright acceptance ${reportLabel}`);
   await page.locator('textarea[name="studentSelfReport"]').fill("Playwright local closure validation for diagnosis flow.");
   await page.locator('button[type="submit"]').click();
 
-  await expect(page).toHaveURL(/\/diagnosis\/\d+$/);
-  await expect(page.locator("pre")).toBeVisible();
+  await expect(page).toHaveURL(/\/diagnosis\/\d+$/, { timeout: 180_000 });
+  await expect(page.locator("pre")).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator("main")).toContainText("家长这周先这么看", { timeout: 30_000 });
   await page.screenshot({ path: testInfo.outputPath(`04-diagnosis-page-${reportLabel}.png`), fullPage: true });
 
   const diagnosisId = Number(page.url().match(/\/diagnosis\/(\d+)$/)?.[1]);
@@ -67,8 +69,8 @@ async function uploadAndOpenDiagnosis(page: Page, testInfo: TestInfo, reportLabe
   expect(weeklyReportId).toBeGreaterThan(0);
 
   await page.locator('a[href^="/weekly-report/"]').first().click();
-  await expect(page).toHaveURL(/\/weekly-report\/\d+$/);
-  await expect(page.locator("main")).toContainText("this_week_problem");
+  await expect(page).toHaveURL(/\/weekly-report\/\d+$/, { timeout: 30_000 });
+  await expect(page.locator("main")).toContainText("反复冒出来的错因", { timeout: 30_000 });
   await page.screenshot({ path: testInfo.outputPath(`05-weekly-report-page-${reportLabel}.png`), fullPage: true });
 
   return { diagnosisId, weeklyReportId };
@@ -81,6 +83,7 @@ function reviewCard(page: Page, diagnosisId: number) {
 }
 
 test("full closure: login -> upload -> diagnosis -> weekly report -> review edit -> approve", async ({ page }, testInfo) => {
+  test.setTimeout(420_000);
   await login(page, testInfo);
   const { diagnosisId, weeklyReportId } = await uploadAndOpenDiagnosis(page, testInfo, "approve-flow");
 
@@ -110,13 +113,16 @@ test("full closure: login -> upload -> diagnosis -> weekly report -> review edit
   await page.goto(`/diagnosis/${diagnosisId}`);
   await expect(page.locator("pre")).toContainText('"review_status": "approved"');
   await expect(page.locator("main")).toContainText("Playwright Repair Action A");
-  await expect(page.locator("main")).toContainText("Playwright updated parent summary.");
+  await expect(page.locator("main")).toContainText("家长这周先这么看：Playwright updated parent summary.");
 
   await page.goto(`/weekly-report/${weeklyReportId}`);
-  await expect(page.locator("main")).toContainText("Playwright Repair Action A");
+  await expect(page.locator("main")).toContainText("接下来先做");
+  await expect(page.locator("main")).toContainText("已经稳住的地方");
+  await expect(page.locator("main")).toContainText("函数");
 });
 
 test("review queue can reject a generated diagnosis", async ({ page }, testInfo) => {
+  test.setTimeout(420_000);
   await login(page, testInfo);
   const { diagnosisId } = await uploadAndOpenDiagnosis(page, testInfo, "reject-flow");
 

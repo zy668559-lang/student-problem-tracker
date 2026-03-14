@@ -5,9 +5,11 @@ import { MetricCard } from "@/components/metric-card";
 import { SectionCard } from "@/components/section-card";
 import { Badge } from "@/components/ui/badge";
 import { getDashboardSnapshot } from "@/lib/db";
+import { getMemorySummary } from "@/lib/db/memory";
 
 export default function DashboardPage() {
   const snapshot = getDashboardSnapshot();
+  const memory = getMemorySummary();
 
   return (
     <div className="space-y-6">
@@ -67,6 +69,39 @@ export default function DashboardPage() {
         </SectionCard>
       </div>
 
+      <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+        <SectionCard title="学生记忆摘要" subtitle="memory summary">
+          <div className="space-y-4 text-sm leading-6 text-slate">
+            <div>
+              <p className="font-semibold text-ink">稳住标签</p>
+              <ul className="mt-2 space-y-2">
+                {memory.stable_tags.map((item) => (
+                  <li key={item} className="rounded-2xl border border-accent/20 bg-accent/10 px-4 py-3 text-ink">{item}</li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <p className="font-semibold text-ink">重复错因</p>
+              <ul className="mt-2 space-y-2">
+                {memory.repeated_error_tags.map((item) => (
+                  <li key={item} className="rounded-2xl border border-line px-4 py-3">{item}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </SectionCard>
+        <SectionCard title="最近三周焦点" subtitle="last_3_weeks_focus / next_priority">
+          <ul className="space-y-3 text-sm leading-6 text-slate">
+            {memory.last_3_weeks_focus.map((item) => (
+              <li key={item} className="rounded-2xl bg-mist px-4 py-3 text-ink">{item}</li>
+            ))}
+          </ul>
+          <div className="mt-4 rounded-2xl bg-ink px-4 py-4 text-sm font-medium leading-6 text-white">
+            {memory.next_priority}
+          </div>
+        </SectionCard>
+      </div>
+
       <SectionCard title="快速入口" subtitle="直接进入上传、诊断和周总结页面。">
         <div className="grid gap-4 md:grid-cols-3">
           <Link href="/upload" className="rounded-3xl bg-ink px-5 py-5 text-white">
@@ -92,4 +127,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
