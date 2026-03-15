@@ -4,6 +4,8 @@ export type ReviewStatus = "pending" | "approved" | "rejected" | "edited";
 export type DiagnosisMode = "quick" | "standard" | "deep";
 export type StepQuality = "none" | "partial" | "clear";
 export type StuckPointSource = "parent_selected" | "student_selected" | "ai_inferred" | "reviewer_corrected";
+export type RecheckTaskStatus = "queued" | "recheck_due" | "passed_once" | "improving" | "stabilized" | "dismissed";
+export type RecheckOutcome = "baseline" | "blocked" | "improving" | "passed";
 export type ResultEventName =
   | "opened_result"
   | "viewed_result_complete"
@@ -30,6 +32,12 @@ export interface WeeklyReportPayload {
   unstable_points: string[];
   repeated_error_tags: string[];
   next_week_plan: string[];
+  recheck_status?: string;
+  next_priority?: string;
+  continue_tracking_reason?: string;
+  student_today_action?: string;
+  student_minimum_action?: string;
+  student_self_check?: string;
 }
 
 export interface MemorySummary {
@@ -38,6 +46,10 @@ export interface MemorySummary {
   last_3_weeks_focus: string[];
   last_best_improvement: string;
   next_priority: string;
+  next_recheck_reason: string;
+  next_action_type: string;
+  recheck_status_summary: string;
+  last_recheck_at: string | null;
   preferred_tone: string;
   updated_at: string;
 }
@@ -56,6 +68,7 @@ export interface TrialAccessSnapshot {
   enabledGrades: string[];
   enabledSubjects: Subject[];
   gradeOpen: boolean;
+  paidTrackingEnabled?: boolean;
   subjectOpenMap: Record<Subject, boolean>;
 }
 
@@ -123,6 +136,18 @@ export interface DiagnosisDetail {
   stepsText?: string | null;
   hasSteps?: boolean;
   stepQuality?: StepQuality;
+  recheckTaskId?: number | null;
+  recheckStatus?: RecheckTaskStatus;
+  recheckOutcome?: RecheckOutcome;
+  recheckSummary?: string | null;
+  nextPriority?: string | null;
+  nextRecheckReason?: string | null;
+  nextActionType?: string | null;
+  continueTrackingReason?: string | null;
+  stabilized?: boolean;
+  studentTodayAction?: string | null;
+  studentMinimumAction?: string | null;
+  studentSelfCheck?: string | null;
   fileName: string;
 }
 
@@ -223,4 +248,51 @@ export interface AdminOperationsSnapshot {
   latestFailures: ModelCallLogDetail[];
   latestCalls: ModelCallLogDetail[];
   latestActions: AdminActionLog[];
+}
+
+export interface RecheckTaskDetail {
+  id: number;
+  studentId: number;
+  diagnosisId: number | null;
+  weeklyReportId: number | null;
+  subject: Subject;
+  module: string;
+  tag: string;
+  status: RecheckTaskStatus;
+  triggerType: string;
+  triggerReason: string;
+  repeatCount7d: number;
+  repeatCount30d: number;
+  lastSeenAt: string | null;
+  lastRecheckAt: string | null;
+  stabilizedScore: number;
+  stabilized: boolean;
+  nextPriority: string;
+  nextRecheckReason: string;
+  nextActionType: string;
+  continueTrackingReason: string;
+  lastOutcome: RecheckOutcome;
+  attemptCount: number;
+  passStreak: number;
+  diagnosisMode: DiagnosisMode;
+  paidTrackingEnabled: boolean;
+  dueDate: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RecheckSyncResult {
+  task: RecheckTaskDetail | null;
+  diagnosisOutcome: RecheckOutcome;
+  created: boolean;
+  statusChanged: boolean;
+  previousStatus: RecheckTaskStatus | null;
+  recheckSummary: string;
+  nextPriority: string;
+  nextRecheckReason: string;
+  nextActionType: string;
+  continueTrackingReason: string;
+  studentTodayAction: string;
+  studentMinimumAction: string;
+  studentSelfCheck: string;
 }

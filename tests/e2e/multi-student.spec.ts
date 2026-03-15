@@ -22,12 +22,21 @@ test.afterEach(async ({}, testInfo) => {
   logStore.delete(testInfo.testId);
 });
 
-async function loginParent(page: Page) {
+async function login(page: Page, email: string) {
   await page.goto("/login");
-  await page.locator('input[name="email"]').fill("parent@example.com");
+  if (await page.locator('input[name="email"]').count() === 0) {
+    await page.getByRole("button", { name: "退出登录" }).click();
+    await expect(page).toHaveURL(/\/login$/, { timeout: 30_000 });
+  }
+
+  await page.locator('input[name="email"]').fill(email);
   await page.locator('input[name="password"]').fill("demo123");
   await page.locator('button[type="submit"]').click();
   await expect(page).toHaveURL(/\/dashboard$/, { timeout: 30_000 });
+}
+
+async function loginParent(page: Page) {
+  await login(page, "parent@example.com");
 }
 
 async function switchStudent(page: Page, studentId: string, expectedName: string) {
@@ -60,8 +69,29 @@ async function uploadForCurrentStudent(page: Page, module: string, reportLabel: 
   return { diagnosisId, weeklyReportId };
 }
 
+async function resetStudentAccess(page: Page) {
+  await login(page, "admin@example.com");
+  for (const id of [1, 2]) {
+    const response = await page.request.patch(`/api/admin/trial-access/${id}`, {
+      data: {
+        whitelistEnabled: true,
+        freeTrialTotal: 200,
+        freeTrialUsed: 0,
+        maxImagesPerUpload: 1,
+        enabledGrades: [],
+        enabledSubjects: ["math", "english"]
+      }
+    });
+    expect(response.ok()).toBeTruthy();
+  }
+
+  await page.getByRole("button", { name: "退出登录" }).click();
+  await expect(page).toHaveURL(/\/login$/, { timeout: 30_000 });
+}
+
 test("multi-student switch keeps uploads, diagnosis and weekly reports isolated by student_id", async ({ page }, testInfo) => {
   test.setTimeout(420_000);
+  await resetStudentAccess(page);
   await loginParent(page);
   await page.screenshot({ path: testInfo.outputPath("01-parent-dashboard.png"), fullPage: true });
 

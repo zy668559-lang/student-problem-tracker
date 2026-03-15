@@ -72,7 +72,30 @@ export default async function WeeklyReportPage({ params }: { params: Promise<{ i
           </ul>
         </SectionCard>
       </div>
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        <SectionCard title="复检状态" subtitle="recheck_status">
+          <p className="text-base leading-8 text-ink">{report.payload.recheck_status ?? "这周先把当前动作跑一轮，我先不额外挂复检压力。"}</p>
+        </SectionCard>
+        <SectionCard title="下轮优先级" subtitle="next_priority">
+          <p className="text-base leading-8 text-ink">{report.payload.next_priority ?? "下一轮先盯最新主卡点。"}</p>
+        </SectionCard>
+        <SectionCard title="继续追踪理由" subtitle="continue_tracking_reason">
+          <p className="text-base leading-8 text-ink">{report.payload.continue_tracking_reason ?? "因为很多问题不是不会，是刚有进步但还没稳。"}</p>
+        </SectionCard>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        <SectionCard title="今天先做哪一步" subtitle="student_today_action">
+          <p className="text-base leading-8 text-ink">{report.payload.student_today_action ?? "今天先做一题最接近这次卡点的题。"}</p>
+        </SectionCard>
+        <SectionCard title="再练 1 个最小动作" subtitle="student_minimum_action">
+          <p className="text-base leading-8 text-ink">{report.payload.student_minimum_action ?? "再练 1 个最小动作，把最容易掉链子的那一步单独做对。"}</p>
+        </SectionCard>
+        <SectionCard title="做完怎么自检" subtitle="student_self_check">
+          <p className="text-base leading-8 text-ink">{report.payload.student_self_check ?? "做完回头看：这次到底是真会了，还是只是碰巧做对。"}</p>
+        </SectionCard>
+      </div>
     </div>
   );
 }
-

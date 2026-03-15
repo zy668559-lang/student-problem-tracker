@@ -1,4 +1,4 @@
-import fs from "node:fs/promises";
+﻿import fs from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
 import {
@@ -7,6 +7,7 @@ import {
   createUploadRecord,
   upsertWeeklyReport
 } from "@/lib/db";
+import { attachWeeklyReportToRecheckTasks, syncRecheckForDiagnosis } from "@/lib/db/recheck";
 import {
   appendStructuredChangeLog,
   ensureProductSchema,
@@ -48,7 +49,7 @@ export async function POST(request: Request) {
   }
 
   if (subject !== "math" && subject !== "english") {
-    return NextResponse.json({ ok: false, message: "科目这次没对上，我先不给它往下跑。" }, { status: 400 });
+    return NextResponse.json({ ok: false, message: "科目这次没对上，我先不给它继续往下跑。" }, { status: 400 });
   }
 
   if (typeof module !== "string" || !module) {
@@ -129,6 +130,7 @@ export async function POST(request: Request) {
     promptVersion: "diag-v5"
   });
   createRepairTasks(diagnosisId, studentId, diagnosis.subject, diagnosis.module, diagnosis.repair_actions);
+
   appendStructuredChangeLog({
     studentId,
     subject: diagnosis.subject,
@@ -139,12 +141,41 @@ export async function POST(request: Request) {
     newIssues: diagnosis.problem_tags,
     unstableIssues: [diagnosis.current_stage],
     repeatedErrorTags: diagnosis.problem_tags.slice(0, 3),
-    evidenceSummary: stuckPointChoice ? `孩子这次自己选了卡点：${stuckPointChoice}` : "这次没选卡点自评，先按图和文字自动判断。"
+    evidenceSummary: stuckPointChoice
+      ? `孩子这次自己选了卡点：${stuckPointChoice}`
+      : "这次没选卡点自评，我先按题图和文字自动判断。"
   });
+
+  const recheck = syncRecheckForDiagnosis(diagnosisId);
+  if (recheck.task) {
+    appendStructuredChangeLog({
+      studentId,
+      subject: diagnosis.subject,
+      module: diagnosis.module,
+      changeType: recheck.created ? "recheck_created" : recheck.task.stabilized ? "stabilized" : "recheck_progress",
+      description: recheck.recheckSummary,
+      relatedDiagnosisId: diagnosisId,
+      stabilizedIssues: recheck.task.stabilized ? [recheck.task.tag] : [],
+      unstableIssues: recheck.task.stabilized ? [] : [recheck.task.tag],
+      repeatedErrorTags: [recheck.task.tag],
+      evidenceSummary: recheck.continueTrackingReason,
+      recheckTaskId: recheck.task.id,
+      repeatCount7d: recheck.task.repeatCount7d,
+      repeatCount30d: recheck.task.repeatCount30d,
+      lastSeenAt: recheck.task.lastSeenAt,
+      lastRecheckAt: recheck.task.lastRecheckAt,
+      stabilizedScore: recheck.task.stabilizedScore,
+      nextPriority: recheck.nextPriority,
+      nextRecheckReason: recheck.nextRecheckReason,
+      nextActionType: recheck.nextActionType,
+      stabilized: recheck.task.stabilized
+    });
+  }
 
   const weeklyReport = await generateWeeklyReport(studentId);
   const weeklyReportId = upsertWeeklyReport(studentId, weeklyReport);
+  attachWeeklyReportToRecheckTasks(studentId, weeklyReportId);
   upsertStudentMemorySummary(studentId);
 
-  return NextResponse.json({ ok: true, diagnosisId, weeklyReportId });
+  return NextResponse.json({ ok: true, diagnosisId, weeklyReportId, recheckTaskId: recheck.task?.id ?? null });
 }

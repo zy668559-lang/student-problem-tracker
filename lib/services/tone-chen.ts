@@ -33,12 +33,19 @@ export function rewriteDiagnosisForChenTeacher(payload: DiagnosisPayload): Diagn
 
 export function rewriteWeeklyReportForChenTeacher(payload: WeeklyReportPayload): WeeklyReportPayload {
   return {
+    ...payload,
     this_week_problem: rewriteList(payload.this_week_problem, "这周主要问题", "先等第一条诊断出来"),
     this_week_actions: rewriteList(payload.this_week_actions, "接下来先做", "先上传一条我来帮你拆动作"),
     improved_points: rewriteList(payload.improved_points, "已经稳住的地方", "先从一个小点稳住开始"),
     unstable_points: rewriteList(payload.unstable_points, "还没完全稳住", "这周先别贪多，先守住一个点"),
     repeated_error_tags: rewriteList(payload.repeated_error_tags, "反复冒出来的错因", "先观察本周高频卡点"),
-    next_week_plan: rewriteList(payload.next_week_plan, "下周重点就盯", "先把重复错因压下来")
+    next_week_plan: rewriteList(payload.next_week_plan, "下周重点就盯", "先把重复错因压下来"),
+    recheck_status: payload.recheck_status ? withPrefix("复检状态：", payload.recheck_status) : undefined,
+    next_priority: payload.next_priority ? withPrefix("下轮优先级：", payload.next_priority) : undefined,
+    continue_tracking_reason: payload.continue_tracking_reason ? withPrefix("继续追踪的理由：", payload.continue_tracking_reason) : undefined,
+    student_today_action: payload.student_today_action ? withPrefix("今天先做：", payload.student_today_action) : undefined,
+    student_minimum_action: payload.student_minimum_action ? withPrefix("再练 1 个最小动作：", payload.student_minimum_action) : undefined,
+    student_self_check: payload.student_self_check ? withPrefix("做完这样自检：", payload.student_self_check) : undefined
   };
 }
 
@@ -49,6 +56,10 @@ export function rewriteMemorySummaryForChenTeacher(payload: MemorySummary): Memo
     last_3_weeks_focus: rewriteList(payload.last_3_weeks_focus, "最近三周一直在盯", "先把本周重点跑一遍"),
     last_best_improvement: withPrefix("最近一次最像样的进步是：", payload.last_best_improvement),
     next_priority: withPrefix("下一步最该先抓：", payload.next_priority),
+    next_recheck_reason: withPrefix("这轮为什么还得复检：", payload.next_recheck_reason),
+    next_action_type: withPrefix("下一步动作类型：", payload.next_action_type),
+    recheck_status_summary: withPrefix("复检状态小结：", payload.recheck_status_summary),
+    last_recheck_at: payload.last_recheck_at,
     preferred_tone: payload.preferred_tone || "陈老师口语化",
     updated_at: payload.updated_at
   };

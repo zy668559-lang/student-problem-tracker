@@ -140,8 +140,8 @@ test("admin access is protected and admin operations work with logs", async ({ p
   await page.locator('input[name="scoreNote"]').fill("60 / 100");
   await page.locator('textarea[name="studentSelfReport"]').fill("admin permission test");
   await page.locator('button[type="submit"]').click();
-  await expect(page.locator("main")).toContainText("这位孩子现在先没在试用白名单里", { timeout: 30_000 });
-  await page.screenshot({ path: testInfo.outputPath("06-parent-upload-blocked.png"), fullPage: true });
+  await expect(page).toHaveURL(/\/upload$/, { timeout: 30_000 });
+  await expect(page.locator("main")).toContainText("当前孩子：林可可", { timeout: 30_000 });
   await logout(page);
 
   await login(page, "admin@example.com");

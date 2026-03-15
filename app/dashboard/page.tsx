@@ -91,6 +91,10 @@ export default async function DashboardPage() {
                 ))}
               </ul>
             </div>
+            <div>
+              <p className="font-semibold text-ink">????</p>
+              <div className="mt-2 rounded-2xl border border-line px-4 py-3 text-ink">{memory.recheck_status_summary}</div>
+            </div>
           </div>
         </SectionCard>
         <SectionCard title="最近三周焦点" subtitle="last_3_weeks_focus / next_priority">
@@ -101,6 +105,9 @@ export default async function DashboardPage() {
           </ul>
           <div className="mt-4 rounded-2xl bg-ink px-4 py-4 text-sm font-medium leading-6 text-white">
             {memory.next_priority}
+          </div>
+          <div className="mt-4 rounded-2xl border border-line px-4 py-4 text-sm leading-6 text-ink">
+            {memory.next_action_type}
           </div>
         </SectionCard>
       </div>

@@ -1,5 +1,6 @@
-import { DEFAULT_WEEKLY_REPORT, SKILL_ASSET_SEEDS } from "@/lib/mock-data";
+﻿import { DEFAULT_WEEKLY_REPORT, SKILL_ASSET_SEEDS } from "@/lib/mock-data";
 import { getDb, getPrimaryStudentId, getStudentDiagnoses } from "@/lib/db";
+import { getStudentRecheckMemoryPatch } from "@/lib/db/recheck";
 import { rewriteMemorySummaryForChenTeacher } from "@/lib/services/tone-chen";
 import type {
   DiagnosisDetail,
@@ -73,7 +74,7 @@ function ensureTrialAccessTableSupportsMultiStudent() {
       free_trial_total INTEGER NOT NULL DEFAULT 6,
       free_trial_used INTEGER NOT NULL DEFAULT 0,
       max_images_per_upload INTEGER NOT NULL DEFAULT 1,
-      enabled_grades TEXT NOT NULL DEFAULT '["七年级","八年级"]',
+      enabled_grades TEXT NOT NULL DEFAULT '["涓冨勾绾?,"鍏勾绾?]',
       enabled_subjects TEXT NOT NULL DEFAULT '["math","english"]',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
@@ -147,11 +148,33 @@ export function ensureProductSchema() {
   ensureColumn("diagnoses", "review_diff", "review_diff TEXT");
   ensureColumn("diagnoses", "diagnosis_mode", "diagnosis_mode TEXT DEFAULT 'standard'");
   ensureColumn("diagnoses", "prompt_version", "prompt_version TEXT DEFAULT 'diag-v4'");
+  ensureColumn("diagnoses", "recheck_task_id", "recheck_task_id INTEGER");
+  ensureColumn("diagnoses", "recheck_status", "recheck_status TEXT DEFAULT 'queued'");
+  ensureColumn("diagnoses", "recheck_outcome", "recheck_outcome TEXT DEFAULT 'baseline'");
+  ensureColumn("diagnoses", "recheck_summary", "recheck_summary TEXT");
+  ensureColumn("diagnoses", "next_priority", "next_priority TEXT");
+  ensureColumn("diagnoses", "next_recheck_reason", "next_recheck_reason TEXT");
+  ensureColumn("diagnoses", "next_action_type", "next_action_type TEXT");
+  ensureColumn("diagnoses", "continue_tracking_reason", "continue_tracking_reason TEXT");
+  ensureColumn("diagnoses", "stabilized", "stabilized INTEGER DEFAULT 0");
+  ensureColumn("diagnoses", "student_today_action", "student_today_action TEXT");
+  ensureColumn("diagnoses", "student_minimum_action", "student_minimum_action TEXT");
+  ensureColumn("diagnoses", "student_self_check", "student_self_check TEXT");
   ensureColumn("change_logs", "new_issues", "new_issues TEXT DEFAULT '[]'");
   ensureColumn("change_logs", "stabilized_issues", "stabilized_issues TEXT DEFAULT '[]'");
   ensureColumn("change_logs", "unstable_issues", "unstable_issues TEXT DEFAULT '[]'");
   ensureColumn("change_logs", "repeated_error_tags", "repeated_error_tags TEXT DEFAULT '[]'");
   ensureColumn("change_logs", "evidence_summary", "evidence_summary TEXT");
+  ensureColumn("change_logs", "recheck_task_id", "recheck_task_id INTEGER");
+  ensureColumn("change_logs", "repeat_count_7d", "repeat_count_7d INTEGER DEFAULT 0");
+  ensureColumn("change_logs", "repeat_count_30d", "repeat_count_30d INTEGER DEFAULT 0");
+  ensureColumn("change_logs", "last_seen_at", "last_seen_at TEXT");
+  ensureColumn("change_logs", "last_recheck_at", "last_recheck_at TEXT");
+  ensureColumn("change_logs", "stabilized_score", "stabilized_score REAL DEFAULT 0");
+  ensureColumn("change_logs", "next_priority", "next_priority TEXT");
+  ensureColumn("change_logs", "next_recheck_reason", "next_recheck_reason TEXT");
+  ensureColumn("change_logs", "next_action_type", "next_action_type TEXT");
+  ensureColumn("change_logs", "stabilized", "stabilized INTEGER DEFAULT 0");
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS trial_access (
@@ -164,7 +187,7 @@ export function ensureProductSchema() {
       free_trial_total INTEGER NOT NULL DEFAULT 6,
       free_trial_used INTEGER NOT NULL DEFAULT 0,
       max_images_per_upload INTEGER NOT NULL DEFAULT 1,
-      enabled_grades TEXT NOT NULL DEFAULT '["七年级","八年级"]',
+      enabled_grades TEXT NOT NULL DEFAULT '["涓冨勾绾?,"鍏勾绾?]',
       enabled_subjects TEXT NOT NULL DEFAULT '["math","english"]',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
@@ -239,6 +262,31 @@ export function ensureProductSchema() {
     );
   `);
 
+  ensureColumn("trial_access", "paid_tracking_enabled", "paid_tracking_enabled INTEGER DEFAULT 0");
+  ensureColumn("student_memory", "next_recheck_reason", "next_recheck_reason TEXT DEFAULT ''");
+  ensureColumn("student_memory", "next_action_type", "next_action_type TEXT DEFAULT ''");
+  ensureColumn("student_memory", "recheck_status_summary", "recheck_status_summary TEXT DEFAULT ''");
+  ensureColumn("student_memory", "last_recheck_at", "last_recheck_at TEXT");
+  ensureColumn("recheck_tasks", "subject", "subject TEXT DEFAULT ''");
+  ensureColumn("recheck_tasks", "module", "module TEXT DEFAULT ''");
+  ensureColumn("recheck_tasks", "tag", "tag TEXT DEFAULT ''");
+  ensureColumn("recheck_tasks", "trigger_type", "trigger_type TEXT DEFAULT 'new_followup'");
+  ensureColumn("recheck_tasks", "trigger_reason", "trigger_reason TEXT DEFAULT ''");
+  ensureColumn("recheck_tasks", "repeat_count_7d", "repeat_count_7d INTEGER DEFAULT 0");
+  ensureColumn("recheck_tasks", "repeat_count_30d", "repeat_count_30d INTEGER DEFAULT 0");
+  ensureColumn("recheck_tasks", "last_seen_at", "last_seen_at TEXT");
+  ensureColumn("recheck_tasks", "last_recheck_at", "last_recheck_at TEXT");
+  ensureColumn("recheck_tasks", "stabilized_score", "stabilized_score REAL DEFAULT 0");
+  ensureColumn("recheck_tasks", "stabilized", "stabilized INTEGER DEFAULT 0");
+  ensureColumn("recheck_tasks", "next_recheck_reason", "next_recheck_reason TEXT DEFAULT ''");
+  ensureColumn("recheck_tasks", "next_action_type", "next_action_type TEXT DEFAULT ''");
+  ensureColumn("recheck_tasks", "continue_tracking_reason", "continue_tracking_reason TEXT DEFAULT ''");
+  ensureColumn("recheck_tasks", "paid_tracking_enabled", "paid_tracking_enabled INTEGER DEFAULT 0");
+  ensureColumn("recheck_tasks", "diagnosis_mode", "diagnosis_mode TEXT DEFAULT 'standard'");
+  ensureColumn("recheck_tasks", "last_outcome", "last_outcome TEXT DEFAULT 'baseline'");
+  ensureColumn("recheck_tasks", "attempt_count", "attempt_count INTEGER DEFAULT 0");
+  ensureColumn("recheck_tasks", "pass_streak", "pass_streak INTEGER DEFAULT 0");
+
   ensureTrialAccessTableSupportsMultiStudent();
   ensureMultiStudentSeed();
 
@@ -255,11 +303,11 @@ export function ensureProductSchema() {
 export function getTrialAccessSnapshot(studentId = getPrimaryStudentId()): TrialAccessSnapshot {
   ensureProductSchema();
   const db = getDb();
-  let row = db.prepare(`SELECT ta.user_id, ta.student_id, ta.phone, ta.invite_code, ta.whitelist_enabled, ta.free_trial_total, ta.free_trial_used, ta.max_images_per_upload, ta.enabled_grades, ta.enabled_subjects, s.grade, s.name AS student_name FROM trial_access ta INNER JOIN students s ON s.id = ta.student_id WHERE ta.student_id = ? LIMIT 1`).get(studentId) as { user_id: number; student_id: number; phone: string | null; invite_code: string | null; whitelist_enabled: number; free_trial_total: number; free_trial_used: number; max_images_per_upload: number; enabled_grades: string; enabled_subjects: string; grade: string | null; student_name: string } | undefined;
+  let row = db.prepare(`SELECT ta.user_id, ta.student_id, ta.phone, ta.invite_code, ta.whitelist_enabled, ta.free_trial_total, ta.free_trial_used, ta.max_images_per_upload, ta.enabled_grades, ta.enabled_subjects, ta.paid_tracking_enabled, s.grade, s.name AS student_name FROM trial_access ta INNER JOIN students s ON s.id = ta.student_id WHERE ta.student_id = ? LIMIT 1`).get(studentId) as { user_id: number; student_id: number; phone: string | null; invite_code: string | null; whitelist_enabled: number; free_trial_total: number; free_trial_used: number; max_images_per_upload: number; enabled_grades: string; enabled_subjects: string; paid_tracking_enabled: number; grade: string | null; student_name: string } | undefined;
 
   if (!row) {
     createDefaultTrialAccessForStudent(studentId);
-    row = db.prepare(`SELECT ta.user_id, ta.student_id, ta.phone, ta.invite_code, ta.whitelist_enabled, ta.free_trial_total, ta.free_trial_used, ta.max_images_per_upload, ta.enabled_grades, ta.enabled_subjects, s.grade, s.name AS student_name FROM trial_access ta INNER JOIN students s ON s.id = ta.student_id WHERE ta.student_id = ? LIMIT 1`).get(studentId) as typeof row;
+    row = db.prepare(`SELECT ta.user_id, ta.student_id, ta.phone, ta.invite_code, ta.whitelist_enabled, ta.free_trial_total, ta.free_trial_used, ta.max_images_per_upload, ta.enabled_grades, ta.enabled_subjects, ta.paid_tracking_enabled, s.grade, s.name AS student_name FROM trial_access ta INNER JOIN students s ON s.id = ta.student_id WHERE ta.student_id = ? LIMIT 1`).get(studentId) as typeof row;
   }
 
   if (!row) {
@@ -283,6 +331,7 @@ export function getTrialAccessSnapshot(studentId = getPrimaryStudentId()): Trial
     enabledGrades,
     enabledSubjects,
     gradeOpen,
+    paidTrackingEnabled: Boolean(row.paid_tracking_enabled),
     subjectOpenMap: { math: enabledSubjects.includes("math"), english: enabledSubjects.includes("english") }
   };
 }
@@ -298,11 +347,11 @@ export function verifyTrialIdentity(userId: number, phone?: string | null, invit
 
 export function validateUploadAccess(studentId: number, subject: Subject, imageCount: number) {
   const access = getTrialAccessSnapshot(studentId);
-  if (!access.whitelistEnabled) return { ok: false, message: "这位孩子现在先没在试用白名单里，我先不给你往下跑。" } as const;
-  if (!access.gradeOpen) return { ok: false, message: "这位孩子现在还没开到这个年级，我先给你留着入口。" } as const;
-  if (!access.subjectOpenMap[subject]) return { ok: false, message: `${subject === "math" ? "数学" : "英语"}这条线现在还没放开，我先替你记下。` } as const;
-  if (imageCount > access.maxImagesPerUpload) return { ok: false, message: `这次先传 ${access.maxImagesPerUpload} 张就够了，我先帮你看最关键的那张。` } as const;
-  if (access.freeTrialRemaining <= 0) return { ok: false, message: "免费体检先用完了，想继续追踪的话，直接切 4 周跟踪更合适。" } as const;
+  if (!access.whitelistEnabled) return { ok: false, message: "??????????????????????????" } as const;
+  if (!access.gradeOpen) return { ok: false, message: "?????????????????????" } as const;
+  if (!access.subjectOpenMap[subject]) return { ok: false, message: `${subject === "math" ? "??" : "??"}??????????????????` } as const;
+  if (imageCount > access.maxImagesPerUpload) return { ok: false, message: `???? ${access.maxImagesPerUpload} ?????????????????` } as const;
+  if (access.freeTrialRemaining <= 0) return { ok: false, message: "?????????????????????? 4 ????????" } as const;
   return { ok: true, access } as const;
 }
 
@@ -341,11 +390,33 @@ export function storeReviewedDiagnosis(diagnosisId: number, payload: DiagnosisPa
   return reviewDiff;
 }
 
-export function appendStructuredChangeLog(input: { studentId: number; subject: Subject; module: string; changeType: string; description: string; relatedDiagnosisId?: number | null; newIssues?: string[]; stabilizedIssues?: string[]; unstableIssues?: string[]; repeatedErrorTags?: string[]; evidenceSummary?: string | null; }) {
+export function appendStructuredChangeLog(input: {
+  studentId: number;
+  subject: Subject;
+  module: string;
+  changeType: string;
+  description: string;
+  relatedDiagnosisId?: number | null;
+  newIssues?: string[];
+  stabilizedIssues?: string[];
+  unstableIssues?: string[];
+  repeatedErrorTags?: string[];
+  evidenceSummary?: string | null;
+  recheckTaskId?: number | null;
+  repeatCount7d?: number;
+  repeatCount30d?: number;
+  lastSeenAt?: string | null;
+  lastRecheckAt?: string | null;
+  stabilizedScore?: number;
+  nextPriority?: string | null;
+  nextRecheckReason?: string | null;
+  nextActionType?: string | null;
+  stabilized?: boolean;
+}) {
   ensureProductSchema();
   const db = getDb();
-  db.prepare(`INSERT INTO change_logs (student_id, subject, module, change_type, description, related_diagnosis_id, new_issues, stabilized_issues, unstable_issues, repeated_error_tags, evidence_summary, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-    .run(input.studentId, input.subject, input.module, input.changeType, input.description, input.relatedDiagnosisId ?? null, stringify(input.newIssues ?? []), stringify(input.stabilizedIssues ?? []), stringify(input.unstableIssues ?? []), stringify(input.repeatedErrorTags ?? []), input.evidenceSummary ?? null, new Date().toISOString());
+  db.prepare(`INSERT INTO change_logs (student_id, subject, module, change_type, description, related_diagnosis_id, new_issues, stabilized_issues, unstable_issues, repeated_error_tags, evidence_summary, recheck_task_id, repeat_count_7d, repeat_count_30d, last_seen_at, last_recheck_at, stabilized_score, next_priority, next_recheck_reason, next_action_type, stabilized, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .run(input.studentId, input.subject, input.module, input.changeType, input.description, input.relatedDiagnosisId ?? null, stringify(input.newIssues ?? []), stringify(input.stabilizedIssues ?? []), stringify(input.unstableIssues ?? []), stringify(input.repeatedErrorTags ?? []), input.evidenceSummary ?? null, input.recheckTaskId ?? null, input.repeatCount7d ?? 0, input.repeatCount30d ?? 0, input.lastSeenAt ?? null, input.lastRecheckAt ?? null, input.stabilizedScore ?? 0, input.nextPriority ?? null, input.nextRecheckReason ?? null, input.nextActionType ?? null, input.stabilized ? 1 : 0, new Date().toISOString());
 }
 
 export function buildStudentMemorySummary(studentId = getPrimaryStudentId()): MemorySummary {
@@ -356,9 +427,22 @@ export function buildStudentMemorySummary(studentId = getPrimaryStudentId()): Me
   const approvedTags = diagnoses.filter((item) => item.review_status === "approved").flatMap((item) => parseArray(item.problem_tags));
   const allTags = diagnoses.flatMap((item) => parseArray(item.problem_tags));
   const repeatedTags = allTags.filter((tag, index, items) => items.indexOf(tag) !== index);
-  const focus = weeklyReports.flatMap((item) => parseObject(item.report_json, DEFAULT_WEEKLY_REPORT).next_week_plan);
-  const bestImprovement = weeklyReports.map((item) => parseObject(item.report_json, DEFAULT_WEEKLY_REPORT).improved_points[0]).find(Boolean) ?? "这周先从一个小改进稳住。";
-  return rewriteMemorySummaryForChenTeacher({ stable_tags: Array.from(new Set(approvedTags)).slice(0, 3), repeated_error_tags: Array.from(new Set(repeatedTags.length > 0 ? repeatedTags : allTags)).slice(0, 4), last_3_weeks_focus: Array.from(new Set(focus)).slice(0, 3), last_best_improvement: bestImprovement, next_priority: focus[0] ?? diagnoses[0]?.current_stage ?? "先把最重复的错因压下来。", preferred_tone: "陈老师口语化", updated_at: new Date().toISOString() });
+  const focus = weeklyReports.flatMap((item) => parseObject(item.report_json, DEFAULT_WEEKLY_REPORT).next_week_plan ?? []);
+  const bestImprovement = weeklyReports.map((item) => parseObject(item.report_json, DEFAULT_WEEKLY_REPORT).improved_points?.[0]).find(Boolean) ?? "这周先从一个小改进稳住。";
+  const recheckPatch = getStudentRecheckMemoryPatch(studentId);
+  return rewriteMemorySummaryForChenTeacher({
+    stable_tags: Array.from(new Set(approvedTags)).slice(0, 3),
+    repeated_error_tags: Array.from(new Set(repeatedTags.length > 0 ? repeatedTags : allTags)).slice(0, 4),
+    last_3_weeks_focus: Array.from(new Set([recheckPatch.nextPriority, ...focus])).slice(0, 3),
+    last_best_improvement: bestImprovement,
+    next_priority: recheckPatch.nextPriority || focus[0] || diagnoses[0]?.current_stage || "先把最重复的错因压下来。",
+    next_recheck_reason: recheckPatch.nextRecheckReason,
+    next_action_type: recheckPatch.nextActionType,
+    recheck_status_summary: recheckPatch.recheckStatusSummary,
+    last_recheck_at: recheckPatch.lastRecheckAt,
+    preferred_tone: "陈老师口语化",
+    updated_at: new Date().toISOString()
+  });
 }
 
 export function upsertStudentMemorySummary(studentId = getPrimaryStudentId()) {
@@ -367,9 +451,9 @@ export function upsertStudentMemorySummary(studentId = getPrimaryStudentId()) {
   const summary = buildStudentMemorySummary(studentId);
   const exists = db.prepare(`SELECT id FROM student_memory WHERE student_id = ? LIMIT 1`).get(studentId) as { id: number } | undefined;
   if (exists) {
-    db.prepare(`UPDATE student_memory SET stable_tags = ?, repeated_error_tags = ?, last_3_weeks_focus = ?, last_best_improvement = ?, next_priority = ?, preferred_tone = ?, updated_at = ? WHERE student_id = ?`).run(stringify(summary.stable_tags), stringify(summary.repeated_error_tags), stringify(summary.last_3_weeks_focus), summary.last_best_improvement, summary.next_priority, summary.preferred_tone, summary.updated_at, studentId);
+    db.prepare(`UPDATE student_memory SET stable_tags = ?, repeated_error_tags = ?, last_3_weeks_focus = ?, last_best_improvement = ?, next_priority = ?, next_recheck_reason = ?, next_action_type = ?, recheck_status_summary = ?, last_recheck_at = ?, preferred_tone = ?, updated_at = ? WHERE student_id = ?`).run(stringify(summary.stable_tags), stringify(summary.repeated_error_tags), stringify(summary.last_3_weeks_focus), summary.last_best_improvement, summary.next_priority, summary.next_recheck_reason, summary.next_action_type, summary.recheck_status_summary, summary.last_recheck_at, summary.preferred_tone, summary.updated_at, studentId);
   } else {
-    db.prepare(`INSERT INTO student_memory (student_id, stable_tags, repeated_error_tags, last_3_weeks_focus, last_best_improvement, next_priority, preferred_tone, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(studentId, stringify(summary.stable_tags), stringify(summary.repeated_error_tags), stringify(summary.last_3_weeks_focus), summary.last_best_improvement, summary.next_priority, summary.preferred_tone, summary.updated_at);
+    db.prepare(`INSERT INTO student_memory (student_id, stable_tags, repeated_error_tags, last_3_weeks_focus, last_best_improvement, next_priority, next_recheck_reason, next_action_type, recheck_status_summary, last_recheck_at, preferred_tone, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(studentId, stringify(summary.stable_tags), stringify(summary.repeated_error_tags), stringify(summary.last_3_weeks_focus), summary.last_best_improvement, summary.next_priority, summary.next_recheck_reason, summary.next_action_type, summary.recheck_status_summary, summary.last_recheck_at, summary.preferred_tone, summary.updated_at);
   }
   return summary;
 }
@@ -377,9 +461,9 @@ export function upsertStudentMemorySummary(studentId = getPrimaryStudentId()) {
 export function getStudentMemorySummary(studentId = getPrimaryStudentId()) {
   ensureProductSchema();
   const db = getDb();
-  const row = db.prepare(`SELECT * FROM student_memory WHERE student_id = ? LIMIT 1`).get(studentId) as { stable_tags: string; repeated_error_tags: string; last_3_weeks_focus: string; last_best_improvement: string; next_priority: string; preferred_tone: string; updated_at: string; } | undefined;
+  const row = db.prepare(`SELECT * FROM student_memory WHERE student_id = ? LIMIT 1`).get(studentId) as { stable_tags: string; repeated_error_tags: string; last_3_weeks_focus: string; last_best_improvement: string; next_priority: string; next_recheck_reason: string; next_action_type: string; recheck_status_summary: string; last_recheck_at: string | null; preferred_tone: string; updated_at: string; } | undefined;
   if (!row) return upsertStudentMemorySummary(studentId);
-  return { stable_tags: parseArray(row.stable_tags), repeated_error_tags: parseArray(row.repeated_error_tags), last_3_weeks_focus: parseArray(row.last_3_weeks_focus), last_best_improvement: row.last_best_improvement, next_priority: row.next_priority, preferred_tone: row.preferred_tone, updated_at: row.updated_at };
+  return { stable_tags: parseArray(row.stable_tags), repeated_error_tags: parseArray(row.repeated_error_tags), last_3_weeks_focus: parseArray(row.last_3_weeks_focus), last_best_improvement: row.last_best_improvement, next_priority: row.next_priority, next_recheck_reason: row.next_recheck_reason, next_action_type: row.next_action_type, recheck_status_summary: row.recheck_status_summary, last_recheck_at: row.last_recheck_at, preferred_tone: row.preferred_tone, updated_at: row.updated_at };
 }
 
 export function getSkillAssets(subject?: Subject, module?: string) {
@@ -409,13 +493,13 @@ function inferAssetTag(detail: DiagnosisDetail) {
 export function getEnhancedDiagnosisDetail(id: number): DiagnosisDetail | null {
   ensureProductSchema();
   const db = getDb();
-  const row = db.prepare(`SELECT d.id, d.upload_id, d.subject, d.module, d.current_stage, d.problem_tags, d.repair_actions, d.parent_summary, d.confidence, d.review_status, d.diagnosis_json, d.draft_diagnosis, d.approved_diagnosis, d.review_notes, d.review_diff, d.diagnosis_mode, d.created_at, u.student_id, u.score_note, u.student_self_report, u.stuck_point_choice, u.stuck_point_source, u.steps_text, u.has_steps, u.step_quality, u.file_name, s.name AS student_name FROM diagnoses d INNER JOIN uploads u ON u.id = d.upload_id INNER JOIN students s ON s.id = u.student_id WHERE d.id = ?`).get(id) as any;
+  const row = db.prepare(`SELECT d.id, d.upload_id, d.subject, d.module, d.current_stage, d.problem_tags, d.repair_actions, d.parent_summary, d.confidence, d.review_status, d.diagnosis_json, d.draft_diagnosis, d.approved_diagnosis, d.review_notes, d.review_diff, d.diagnosis_mode, d.recheck_task_id, d.recheck_status, d.recheck_outcome, d.recheck_summary, d.next_priority, d.next_recheck_reason, d.next_action_type, d.continue_tracking_reason, d.stabilized, d.student_today_action, d.student_minimum_action, d.student_self_check, d.created_at, u.student_id, u.score_note, u.student_self_report, u.stuck_point_choice, u.stuck_point_source, u.steps_text, u.has_steps, u.step_quality, u.file_name, s.name AS student_name FROM diagnoses d INNER JOIN uploads u ON u.id = d.upload_id INNER JOIN students s ON s.id = u.student_id WHERE d.id = ?`).get(id) as any;
   if (!row) return null;
   const fallback: DiagnosisPayload = { current_stage: row.current_stage, subject: row.subject, module: row.module, problem_tags: parseArray(row.problem_tags), repair_actions: parseArray(row.repair_actions), parent_summary: row.parent_summary, confidence: row.confidence, review_status: row.review_status };
   const draftDiagnosis = parseObject<DiagnosisPayload>(row.draft_diagnosis, fallback);
   const approvedDiagnosis = row.approved_diagnosis ? parseObject<DiagnosisPayload>(row.approved_diagnosis, draftDiagnosis) : null;
   const currentPayload = parseObject<DiagnosisPayload>(row.diagnosis_json, approvedDiagnosis ?? draftDiagnosis);
-  return { id: row.id, studentId: row.student_id, studentName: row.student_name, uploadId: row.upload_id, subject: row.subject, module: row.module, diagnosisMode: (row.diagnosis_mode ?? "standard") as DiagnosisMode, currentStage: row.current_stage, problemTags: parseArray(row.problem_tags), repairActions: parseArray(row.repair_actions), parentSummary: row.parent_summary, confidence: row.confidence, reviewStatus: row.review_status, rawJson: currentPayload, draftDiagnosis, approvedDiagnosis, reviewNotes: row.review_notes, reviewDiff: parseObject<Record<string, unknown> | null>(row.review_diff, null), createdAt: row.created_at, scoreNote: row.score_note, studentSelfReport: row.student_self_report, stuckPointChoice: row.stuck_point_choice, stuckPointSource: (row.stuck_point_source ?? "parent_selected") as StuckPointSource, stepsText: row.steps_text, hasSteps: Boolean(row.has_steps), stepQuality: (row.step_quality ?? "none") as StepQuality, fileName: row.file_name };
+  return { id: row.id, studentId: row.student_id, studentName: row.student_name, uploadId: row.upload_id, subject: row.subject, module: row.module, diagnosisMode: (row.diagnosis_mode ?? "standard") as DiagnosisMode, currentStage: row.current_stage, problemTags: parseArray(row.problem_tags), repairActions: parseArray(row.repair_actions), parentSummary: row.parent_summary, confidence: row.confidence, reviewStatus: row.review_status, rawJson: currentPayload, draftDiagnosis, approvedDiagnosis, reviewNotes: row.review_notes, reviewDiff: parseObject<Record<string, unknown> | null>(row.review_diff, null), createdAt: row.created_at, scoreNote: row.score_note, studentSelfReport: row.student_self_report, stuckPointChoice: row.stuck_point_choice, stuckPointSource: (row.stuck_point_source ?? "parent_selected") as StuckPointSource, stepsText: row.steps_text, hasSteps: Boolean(row.has_steps), stepQuality: (row.step_quality ?? "none") as StepQuality, recheckTaskId: row.recheck_task_id, recheckStatus: row.recheck_status, recheckOutcome: row.recheck_outcome, recheckSummary: row.recheck_summary, nextPriority: row.next_priority, nextRecheckReason: row.next_recheck_reason, nextActionType: row.next_action_type, continueTrackingReason: row.continue_tracking_reason, stabilized: Boolean(row.stabilized), studentTodayAction: row.student_today_action, studentMinimumAction: row.student_minimum_action, studentSelfCheck: row.student_self_check, fileName: row.file_name };
 }
 
 export function getRecommendedSkillAssetByDiagnosis(diagnosisId: number) {
@@ -441,7 +525,7 @@ export function appendResultPageEvent(input: { studentId: number; diagnosisId: n
 }
 
 export function getSkillAssetSeedSummary() {
-  return getSkillAssets("math").filter((asset) => asset.module === "几何" || asset.module === "函数");
+  return getSkillAssets("math").filter((asset) => asset.module === "鍑犱綍" || asset.module === "鍑芥暟");
 }
 
 export function getCurrentTableCounts() {

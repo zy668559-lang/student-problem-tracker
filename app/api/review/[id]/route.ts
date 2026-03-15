@@ -5,6 +5,7 @@ import {
   updateDiagnosisReview,
   upsertWeeklyReport
 } from "@/lib/db";
+import { attachWeeklyReportToRecheckTasks, syncRecheckForDiagnosis } from "@/lib/db/recheck";
 import {
   appendStructuredChangeLog,
   ensureProductSchema,
@@ -74,10 +75,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     module: normalizedPayload.module,
     changeType: reviewStatus,
     description: reviewStatus === "approved"
-      ? `这条诊断我先给你通过了，正式档案就按这个版本走。`
+      ? "这条诊断我先给你通过了，正式档案就按这个版本走。"
       : reviewStatus === "edited"
-        ? `这条诊断我先替你改过了，后面家长端看到的是老师确认版。`
-        : `这条诊断我先驳回，等下一轮重新判断。`,
+        ? "这条诊断我先替你改过了，后面家长端看到的是老师确认版。"
+        : "这条诊断我先驳回，等下一轮重新判断。",
     relatedDiagnosisId: Number(id),
     stabilizedIssues: reviewStatus === "approved" ? normalizedPayload.problem_tags.slice(0, 2) : [],
     unstableIssues: reviewStatus === "rejected" ? normalizedPayload.problem_tags.slice(0, 3) : [normalizedPayload.current_stage],
@@ -85,9 +86,36 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     evidenceSummary: body.reviewNotes ?? "这次没有额外备注，先按老师确认结果入档。"
   });
 
+  const recheck = syncRecheckForDiagnosis(Number(id));
+  if (recheck.task) {
+    appendStructuredChangeLog({
+      studentId: context.student_id,
+      subject: normalizedPayload.subject,
+      module: normalizedPayload.module,
+      changeType: recheck.task.stabilized ? "stabilized" : "recheck_progress",
+      description: recheck.recheckSummary,
+      relatedDiagnosisId: Number(id),
+      stabilizedIssues: recheck.task.stabilized ? [recheck.task.tag] : [],
+      unstableIssues: recheck.task.stabilized ? [] : [recheck.task.tag],
+      repeatedErrorTags: [recheck.task.tag],
+      evidenceSummary: recheck.continueTrackingReason,
+      recheckTaskId: recheck.task.id,
+      repeatCount7d: recheck.task.repeatCount7d,
+      repeatCount30d: recheck.task.repeatCount30d,
+      lastSeenAt: recheck.task.lastSeenAt,
+      lastRecheckAt: recheck.task.lastRecheckAt,
+      stabilizedScore: recheck.task.stabilizedScore,
+      nextPriority: recheck.nextPriority,
+      nextRecheckReason: recheck.nextRecheckReason,
+      nextActionType: recheck.nextActionType,
+      stabilized: recheck.task.stabilized
+    });
+  }
+
   const weeklyReport = await generateWeeklyReport(context.student_id);
-  upsertWeeklyReport(context.student_id, weeklyReport);
+  const weeklyReportId = upsertWeeklyReport(context.student_id, weeklyReport);
+  attachWeeklyReportToRecheckTasks(context.student_id, weeklyReportId);
   upsertStudentMemorySummary(context.student_id);
 
-  return NextResponse.json({ ok: true, reviewDiff });
+  return NextResponse.json({ ok: true, reviewDiff, recheckTaskId: recheck.task?.id ?? null });
 }

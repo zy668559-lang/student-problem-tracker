@@ -1,5 +1,6 @@
 ﻿import { ENGLISH_BACKEND_TAGS, MOCK_DIAGNOSIS_TEMPLATES } from "@/lib/mock-data";
 import { getStudentDiagnoses } from "@/lib/db";
+import { getWeeklyReportRecheckOverlay } from "@/lib/db/recheck";
 import { createModelCallLog, getStudentMemorySummary } from "@/lib/db/product";
 import { rewriteDiagnosisForChenTeacher, rewriteWeeklyReportForChenTeacher } from "@/lib/services/tone-chen";
 import type { DiagnosisMode, DiagnosisPayload, StepQuality, StuckPointSource, Subject, WeeklyReportPayload } from "@/lib/types";
@@ -295,6 +296,22 @@ function buildBaseWeeklyReport(studentId: number): WeeklyReportPayload {
   };
 }
 
+function enrichWeeklyReportWithRecheck(studentId: number, payload: WeeklyReportPayload) {
+  const overlay = getWeeklyReportRecheckOverlay(studentId);
+  return rewriteWeeklyReportForChenTeacher({
+    ...payload,
+    improved_points: uniqueStrings([...payload.improved_points, overlay.improvedPoint], 5),
+    unstable_points: uniqueStrings([...payload.unstable_points, overlay.unstablePoint], 5),
+    repeated_error_tags: uniqueStrings([...payload.repeated_error_tags, overlay.repeatedTag], 4),
+    recheck_status: overlay.recheckStatus,
+    next_priority: overlay.nextPriority,
+    continue_tracking_reason: overlay.continueTrackingReason,
+    student_today_action: overlay.studentTodayAction,
+    student_minimum_action: overlay.studentMinimumAction,
+    student_self_check: overlay.studentSelfCheck
+  });
+}
+
 function buildWeeklyPrompt(base: WeeklyReportPayload) {
   return [
     "请把下面这份学习周报事实整理成更适合家长阅读的 JSON。",
@@ -345,11 +362,14 @@ async function polishWeeklyReportWithModel(studentId: number, base: WeeklyReport
       retryCount += 1;
     }
   }
-  return rewriteWeeklyReportForChenTeacher(base);
+  return enrichWeeklyReportWithRecheck(studentId, base);
 }
 
 export async function generateWeeklyReport(studentId: number) {
   const base = buildBaseWeeklyReport(studentId);
-  if (getRealProviderEnabled()) return polishWeeklyReportWithModel(studentId, base);
-  return rewriteWeeklyReportForChenTeacher(base);
+  if (getRealProviderEnabled()) {
+    const polished = await polishWeeklyReportWithModel(studentId, base);
+    return enrichWeeklyReportWithRecheck(studentId, polished);
+  }
+  return enrichWeeklyReportWithRecheck(studentId, base);
 }
