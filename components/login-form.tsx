@@ -46,7 +46,10 @@ export function LoginForm() {
         <p className="text-xs font-semibold uppercase tracking-[0.28em] text-accent/70">Local MVP</p>
         <h1 className="mt-3 text-3xl font-semibold text-ink">登录会员后台</h1>
         <p className="mt-3 text-sm leading-6 text-slate">
-          演示账号：<code>parent@example.com</code> / <code>demo123</code>
+          家长演示账号：<code>parent@example.com</code> / <code>demo123</code>
+        </p>
+        <p className="mt-2 text-sm leading-6 text-slate">
+          管理员演示账号：<code>admin@example.com</code> / <code>demo123</code>
         </p>
         <p className="mt-2 text-sm leading-6 text-slate">
           白名单手机号或邀请码不填也能进演示环境，正式试用时我会按白名单规则帮你控次数。

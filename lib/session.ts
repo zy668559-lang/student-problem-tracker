@@ -1,4 +1,4 @@
-import { cookies } from "next/headers";
+﻿import { cookies } from "next/headers";
 import { getPrimaryStudentId } from "@/lib/db";
 import type { AppSession } from "@/lib/types";
 
@@ -11,13 +11,28 @@ function normalizeStudentIds(value: unknown) {
     .filter((item) => Number.isInteger(item) && item > 0);
 }
 
+function normalizeSessionCandidate(value: unknown) {
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value) as unknown;
+    } catch {
+      return null;
+    }
+  }
+  return value;
+}
+
 export function parseSessionValue(value?: string | null): AppSession | null {
   if (!value) {
     return null;
   }
 
   try {
-    const parsed = JSON.parse(value) as Partial<AppSession>;
+    const decoded = decodeURIComponent(value);
+    const parsed = normalizeSessionCandidate(JSON.parse(decoded)) as Partial<AppSession> | null;
+    if (!parsed) {
+      return null;
+    }
     const studentIds = normalizeStudentIds(parsed.studentIds);
     const activeStudentId = typeof parsed.activeStudentId === "number"
       ? parsed.activeStudentId
@@ -47,6 +62,10 @@ export async function getServerSession() {
   return parseSessionValue(store.get("spt_session")?.value);
 }
 
+export function isAdminSession(session: AppSession | null) {
+  return session?.role === "admin";
+}
+
 export function getActiveStudentId(session: AppSession | null) {
   if (session?.activeStudentId && session.studentIds.includes(session.activeStudentId)) {
     return session.activeStudentId;
@@ -71,5 +90,5 @@ export function parseSessionFromCookieHeader(cookieHeader?: string | null) {
     return null;
   }
 
-  return parseSessionValue(decodeURIComponent(sessionPair.slice("spt_session=".length)));
+  return parseSessionValue(sessionPair.slice("spt_session=".length));
 }

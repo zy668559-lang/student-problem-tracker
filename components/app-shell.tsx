@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -26,6 +26,7 @@ const adminNavItems = [
 
 export function AppShell({ children, session, students }: { children: ReactNode; session: AppSession | null; students: StudentOption[] }) {
   const pathname = usePathname();
+  const isAdmin = session?.role === "admin";
 
   if (pathname === "/login") {
     return <>{children}</>;
@@ -43,38 +44,17 @@ export function AppShell({ children, session, students }: { children: ReactNode;
         </div>
 
         <div className="mt-6 space-y-4">
-          <StudentSwitcher students={students} activeStudentId={session?.activeStudentId ?? null} />
+          {!isAdmin ? <StudentSwitcher students={students} activeStudentId={session?.activeStudentId ?? null} /> : null}
           <div className="rounded-3xl border border-line bg-white/80 p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent/70">账号视角</p>
-            <p className="mt-3 text-sm font-semibold text-ink">{session?.role === "reviewer" ? "审核老师" : "家长账号"}</p>
-            <p className="mt-2 text-sm leading-6 text-slate">现在这个账号下的孩子会分开看数据，不会把上传、记忆和周报混在一起。</p>
+            <p className="mt-3 text-sm font-semibold text-ink">{isAdmin ? "管理员账号" : "家长账号"}</p>
+            <p className="mt-2 text-sm leading-6 text-slate">{isAdmin ? "管理员能进运营后台，也会留下操作日志。" : "现在这个账号下的孩子会分开看数据，不会把上传、记忆和周报混在一起。"}</p>
           </div>
         </div>
 
-        <nav className="mt-8 space-y-2">
-          {parentNavItems.map((item) => {
-            const active = pathname.startsWith(item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center rounded-2xl px-4 py-3 text-sm font-medium transition",
-                  active
-                    ? "bg-ink text-white shadow-lg shadow-ink/10"
-                    : "text-slate hover:bg-mist hover:text-ink"
-                )}
-              >
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
-
-        <div className="mt-8 border-t border-line pt-6">
-          <p className="px-4 text-xs font-semibold uppercase tracking-[0.24em] text-accent/70">运营后台</p>
-          <nav className="mt-3 space-y-2">
-            {adminNavItems.map((item) => {
+        {!isAdmin ? (
+          <nav className="mt-8 space-y-2">
+            {parentNavItems.map((item) => {
               const active = pathname.startsWith(item.href);
               return (
                 <Link
@@ -83,7 +63,7 @@ export function AppShell({ children, session, students }: { children: ReactNode;
                   className={cn(
                     "flex items-center rounded-2xl px-4 py-3 text-sm font-medium transition",
                     active
-                      ? "bg-accent text-white shadow-lg shadow-accent/15"
+                      ? "bg-ink text-white shadow-lg shadow-ink/10"
                       : "text-slate hover:bg-mist hover:text-ink"
                   )}
                 >
@@ -92,7 +72,32 @@ export function AppShell({ children, session, students }: { children: ReactNode;
               );
             })}
           </nav>
-        </div>
+        ) : null}
+
+        {isAdmin ? (
+          <div className="mt-8 border-t border-line pt-6">
+            <p className="px-4 text-xs font-semibold uppercase tracking-[0.24em] text-accent/70">运营后台</p>
+            <nav className="mt-3 space-y-2">
+              {adminNavItems.map((item) => {
+                const active = pathname.startsWith(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "flex items-center rounded-2xl px-4 py-3 text-sm font-medium transition",
+                      active
+                        ? "bg-accent text-white shadow-lg shadow-accent/15"
+                        : "text-slate hover:bg-mist hover:text-ink"
+                    )}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+        ) : null}
 
         <form action="/api/logout" method="post" className="mt-auto">
           <button className="w-full rounded-2xl border border-line px-4 py-3 text-sm font-medium text-slate transition hover:border-accent hover:text-accent">

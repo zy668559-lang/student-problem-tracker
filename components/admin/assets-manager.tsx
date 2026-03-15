@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -82,7 +82,7 @@ export function AssetsManager({ items }: { items: SkillAsset[] }) {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-panel border border-white/70 bg-white/90 p-5 shadow-panel">
+      <section data-testid="asset-create-card" className="rounded-panel border border-white/70 bg-white/90 p-5 shadow-panel">
         <p className="text-lg font-semibold text-ink">新增素材</p>
         <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <label className="block">
@@ -167,7 +167,7 @@ function AssetEditor({ item, loadingKey, onSave, onDelete }: { item: SkillAsset;
   });
 
   return (
-    <article className="rounded-panel border border-white/70 bg-white/90 p-5 shadow-panel">
+    <article data-testid={`asset-card-${item.id}`} className="rounded-panel border border-white/70 bg-white/90 p-5 shadow-panel">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <label className="block">
           <span className="mb-2 block text-sm font-medium text-ink">科目</span>

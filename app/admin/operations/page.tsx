@@ -1,4 +1,4 @@
-export const dynamic = "force-dynamic";
+﻿export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { SectionCard } from "@/components/section-card";
@@ -15,7 +15,7 @@ export default function AdminOperationsPage() {
       <section className="rounded-panel border border-white/70 bg-white/90 p-6 shadow-panel sm:p-8">
         <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent/70">Operations</p>
         <h1 className="mt-3 text-3xl font-semibold text-ink">审核与成本</h1>
-        <p className="mt-3 max-w-3xl text-sm leading-7 text-slate">这里把审核队列、模型调用、失败记录和估算成本放一起。运营看这里，就知道是不是既控住了质量，也控住了成本。</p>
+        <p className="mt-3 max-w-3xl text-sm leading-7 text-slate">这里把审核队列、模型调用、失败记录、估算成本和管理员操作日志放一起。运营看这里，就知道是不是既控住了质量，也控住了成本。</p>
       </section>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -26,7 +26,7 @@ export default function AdminOperationsPage() {
           <p className="text-4xl font-semibold text-ink">{operations.failedCalls}</p>
         </SectionCard>
         <SectionCard title="估算成本" subtitle="累计估算">
-          <p className="text-4xl font-semibold text-ink">￥ {operations.estimatedCost.toFixed(2)}</p>
+          <p className="text-4xl font-semibold text-ink">¥ {operations.estimatedCost.toFixed(2)}</p>
         </SectionCard>
         <SectionCard title="平均耗时" subtitle="毫秒">
           <p className="text-4xl font-semibold text-ink">{operations.averageLatencyMs}</p>
@@ -52,7 +52,7 @@ export default function AdminOperationsPage() {
               <div key={item.id} className="rounded-2xl border border-line px-4 py-4">
                 <p className="font-semibold text-ink">{item.provider} / {item.modelName}</p>
                 <p>模式：{item.diagnosisMode} · Prompt：{item.promptVersion}</p>
-                <p>耗时：{item.latencyMs} ms · 估算成本：￥ {item.estimatedCost.toFixed(4)}</p>
+                <p>耗时：{item.latencyMs} ms · 估算成本：¥ {item.estimatedCost.toFixed(4)}</p>
                 <p>时间：{formatDate(item.createdAt)}</p>
               </div>
             ))}
@@ -70,6 +70,19 @@ export default function AdminOperationsPage() {
           </div>
         </SectionCard>
       </div>
+
+      <SectionCard title="管理员操作日志" subtitle="谁、什么时间、做了什么">
+        <div className="space-y-4 text-sm leading-6 text-slate">
+          {operations.latestActions.length > 0 ? operations.latestActions.map((item) => (
+            <div key={item.id} className="rounded-2xl border border-line px-4 py-4">
+              <p className="font-semibold text-ink">{item.actorName} · {item.actorRole}</p>
+              <p>{item.actionType} / {item.targetType}{item.targetId ? ` #${item.targetId}` : ""}</p>
+              <p>{item.detail}</p>
+              <p>{formatDate(item.createdAt)}</p>
+            </div>
+          )) : <p className="text-slate">当前还没有管理员操作日志。</p>}
+        </div>
+      </SectionCard>
     </div>
   );
 }

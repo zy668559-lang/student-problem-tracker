@@ -1,4 +1,4 @@
-export type Subject = "math" | "english";
+﻿export type Subject = "math" | "english";
 
 export type ReviewStatus = "pending" | "approved" | "rejected" | "edited";
 export type DiagnosisMode = "quick" | "standard" | "deep";
@@ -204,6 +204,17 @@ export interface AdminStudentRow {
   nextPriority: string | null;
 }
 
+export interface AdminActionLog {
+  id: number;
+  actorName: string;
+  actorRole: string;
+  actionType: string;
+  targetType: string;
+  targetId: number | null;
+  detail: string;
+  createdAt: string;
+}
+
 export interface AdminOperationsSnapshot {
   totalCalls: number;
   failedCalls: number;
@@ -211,4 +222,5 @@ export interface AdminOperationsSnapshot {
   averageLatencyMs: number;
   latestFailures: ModelCallLogDetail[];
   latestCalls: ModelCallLogDetail[];
+  latestActions: AdminActionLog[];
 }

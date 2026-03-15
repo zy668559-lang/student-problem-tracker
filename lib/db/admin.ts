@@ -1,6 +1,7 @@
 import { getDb, getReviewQueue } from "@/lib/db";
 import { ensureProductSchema, getSkillAssets, getStudentMemorySummary } from "@/lib/db/product";
 import type {
+  AdminActionLog,
   AdminOperationsSnapshot,
   AdminStudentRow,
   AdminTrialAccessItem,
@@ -28,8 +29,81 @@ function parseReviewStatus(value: string | null) {
     : null;
 }
 
-export function listStudentsForUser(userId: number) {
+export function ensureAdminSchema() {
   ensureProductSchema();
+  const db = getDb();
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS admin_action_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      user_role TEXT NOT NULL,
+      action_type TEXT NOT NULL,
+      target_type TEXT NOT NULL,
+      target_id INTEGER,
+      detail TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+  `);
+
+  const admin = db.prepare(`SELECT id FROM users WHERE role = 'admin' LIMIT 1`).get() as { id: number } | undefined;
+  if (!admin) {
+    db.prepare(`INSERT INTO users (name, email, password, role, created_at, phone) VALUES (?, ?, ?, 'admin', ?, ?)`)
+      .run("管理员演示账号", "admin@example.com", "demo123", new Date().toISOString(), "13800009999");
+  }
+}
+
+export function appendAdminActionLog(input: {
+  userId: number;
+  userRole: string;
+  actionType: string;
+  targetType: string;
+  targetId?: number | null;
+  detail: string;
+}) {
+  ensureAdminSchema();
+  const db = getDb();
+  db.prepare(`
+    INSERT INTO admin_action_logs (user_id, user_role, action_type, target_type, target_id, detail, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(input.userId, input.userRole, input.actionType, input.targetType, input.targetId ?? null, input.detail, new Date().toISOString());
+}
+
+export function listAdminActionLogs(limit = 12) {
+  ensureAdminSchema();
+  const db = getDb();
+  const rows = db.prepare(`
+    SELECT aal.id, aal.user_role, aal.action_type, aal.target_type, aal.target_id, aal.detail, aal.created_at, u.name AS actor_name
+    FROM admin_action_logs aal
+    INNER JOIN users u ON u.id = aal.user_id
+    ORDER BY aal.created_at DESC
+    LIMIT ?
+  `).all(limit) as Array<{
+    id: number;
+    user_role: string;
+    action_type: string;
+    target_type: string;
+    target_id: number | null;
+    detail: string;
+    created_at: string;
+    actor_name: string;
+  }>;
+
+  return rows.map((row) => ({
+    id: row.id,
+    actorName: row.actor_name,
+    actorRole: row.user_role,
+    actionType: row.action_type,
+    targetType: row.target_type,
+    targetId: row.target_id,
+    detail: row.detail,
+    createdAt: row.created_at
+  })) satisfies AdminActionLog[];
+}
+
+export function listStudentsForUser(userId: number) {
+  ensureAdminSchema();
   const db = getDb();
   const rows = db.prepare(`
     SELECT s.id, s.user_id, s.name, s.grade, s.school, sm.next_priority
@@ -50,7 +124,7 @@ export function listStudentsForUser(userId: number) {
 }
 
 export function listTrialAccessAdmin() {
-  ensureProductSchema();
+  ensureAdminSchema();
   const db = getDb();
   const rows = db.prepare(`
     SELECT ta.id, ta.user_id, ta.student_id, ta.phone, ta.invite_code, ta.whitelist_enabled, ta.free_trial_total, ta.free_trial_used, ta.max_images_per_upload, ta.enabled_grades, ta.enabled_subjects, u.name AS user_name, s.name AS student_name, s.grade
@@ -111,7 +185,7 @@ export function updateTrialAccessAdmin(id: number, input: {
   enabledGrades: string[];
   enabledSubjects: Subject[];
 }) {
-  ensureProductSchema();
+  ensureAdminSchema();
   const db = getDb();
   db.prepare(`
     UPDATE trial_access
@@ -130,7 +204,7 @@ export function updateTrialAccessAdmin(id: number, input: {
 }
 
 export function listAdminStudents() {
-  ensureProductSchema();
+  ensureAdminSchema();
   const db = getDb();
   const rows = db.prepare(`
     SELECT
@@ -257,7 +331,7 @@ function mapModelCallRows(rows: Array<any>) {
 }
 
 export function getAdminOperationsSnapshot() {
-  ensureProductSchema();
+  ensureAdminSchema();
   const db = getDb();
   const totals = db.prepare(`
     SELECT COUNT(*) AS total_calls,
@@ -269,6 +343,7 @@ export function getAdminOperationsSnapshot() {
 
   const latestCalls = mapModelCallRows(db.prepare(`SELECT * FROM model_call_logs ORDER BY created_at DESC LIMIT 12`).all() as Array<any>);
   const latestFailures = mapModelCallRows(db.prepare(`SELECT * FROM model_call_logs WHERE success = 0 ORDER BY created_at DESC LIMIT 8`).all() as Array<any>);
+  const latestActions = listAdminActionLogs();
 
   return {
     totalCalls: totals.total_calls,
@@ -276,12 +351,13 @@ export function getAdminOperationsSnapshot() {
     estimatedCost: Number(totals.estimated_cost ?? 0),
     averageLatencyMs: Math.round(Number(totals.avg_latency ?? 0)),
     latestFailures,
-    latestCalls
+    latestCalls,
+    latestActions
   } satisfies AdminOperationsSnapshot;
 }
 
 export function getAdminOverview() {
-  ensureProductSchema();
+  ensureAdminSchema();
   const db = getDb();
   const students = (db.prepare(`SELECT COUNT(*) AS count FROM students`).get() as { count: number }).count;
   const trialOpen = (db.prepare(`SELECT COUNT(*) AS count FROM trial_access WHERE whitelist_enabled = 1`).get() as { count: number }).count;
@@ -291,13 +367,14 @@ export function getAdminOverview() {
 }
 
 export function listSkillAssetsAdmin() {
+  ensureAdminSchema();
   return getSkillAssets();
 }
 
 export function createSkillAssetAdmin(input: Omit<SkillAsset, "id">) {
-  ensureProductSchema();
+  ensureAdminSchema();
   const db = getDb();
-  db.prepare(`
+  const result = db.prepare(`
     INSERT INTO skill_assets (subject, module, tag, difficulty, asset_type, title, summary, file_url, preview_url, use_stage, paid_only, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
@@ -314,10 +391,11 @@ export function createSkillAssetAdmin(input: Omit<SkillAsset, "id">) {
     input.paidOnly ? 1 : 0,
     new Date().toISOString()
   );
+  return Number(result.lastInsertRowid);
 }
 
 export function updateSkillAssetAdmin(id: number, input: Omit<SkillAsset, "id">) {
-  ensureProductSchema();
+  ensureAdminSchema();
   const db = getDb();
   db.prepare(`
     UPDATE skill_assets
@@ -340,7 +418,7 @@ export function updateSkillAssetAdmin(id: number, input: Omit<SkillAsset, "id">)
 }
 
 export function deleteSkillAssetAdmin(id: number) {
-  ensureProductSchema();
+  ensureAdminSchema();
   const db = getDb();
   db.prepare(`DELETE FROM skill_assets WHERE id = ?`).run(id);
 }
@@ -357,3 +435,4 @@ export function getReviewAndCostSummaryText() {
 export function getStudentMemoryPreview(studentId: number) {
   return getStudentMemorySummary(studentId);
 }
+
