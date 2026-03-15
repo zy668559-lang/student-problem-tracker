@@ -1,9 +1,12 @@
-﻿import { SectionCard } from "@/components/section-card";
+import { SectionCard } from "@/components/section-card";
 import { UploadForm } from "@/components/upload-form";
 import { getTrialAccessSnapshot } from "@/lib/db/product";
+import { getActiveStudentId, getServerSession } from "@/lib/session";
 
-export default function UploadPage() {
-  const access = getTrialAccessSnapshot();
+export default async function UploadPage() {
+  const session = await getServerSession();
+  const studentId = getActiveStudentId(session);
+  const access = getTrialAccessSnapshot(studentId);
 
   return (
     <div className="space-y-6">
@@ -14,6 +17,7 @@ export default function UploadPage() {
           这里不是题库，是本周问题入口。你先传一张，我先帮你看孩子更像卡在哪、这周先改哪一步。
         </p>
         <div className="mt-4 flex flex-wrap gap-3 text-sm text-slate">
+          <span className="rounded-full bg-mist px-4 py-2">当前孩子：{access.studentName ?? "未命名学生"}</span>
           <span className="rounded-full bg-mist px-4 py-2">剩余试用：{access.freeTrialRemaining} / {access.freeTrialTotal}</span>
           <span className="rounded-full bg-mist px-4 py-2">单次最多：{access.maxImagesPerUpload} 张</span>
           <span className="rounded-full bg-mist px-4 py-2">当前开放：{access.enabledSubjects.map((item) => item === "math" ? "数学" : "英语").join(" / ")}</span>

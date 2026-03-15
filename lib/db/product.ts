@@ -1,4 +1,4 @@
-﻿import { DEFAULT_WEEKLY_REPORT, SKILL_ASSET_SEEDS } from "@/lib/mock-data";
+import { DEFAULT_WEEKLY_REPORT, SKILL_ASSET_SEEDS } from "@/lib/mock-data";
 import { getDb, getPrimaryStudentId, getStudentDiagnoses } from "@/lib/db";
 import { rewriteMemorySummaryForChenTeacher } from "@/lib/services/tone-chen";
 import type {
@@ -53,6 +53,83 @@ function ensureColumn(table: string, columnName: string, definition: string) {
   }
 }
 
+function ensureTrialAccessTableSupportsMultiStudent() {
+  const db = getDb();
+  const row = db.prepare(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'trial_access'`).get() as { sql: string } | undefined;
+  if (!row?.sql?.includes("user_id INTEGER NOT NULL UNIQUE")) {
+    return;
+  }
+
+  db.exec(`
+    ALTER TABLE trial_access RENAME TO trial_access_legacy;
+
+    CREATE TABLE trial_access (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      student_id INTEGER NOT NULL UNIQUE,
+      phone TEXT,
+      invite_code TEXT,
+      whitelist_enabled INTEGER NOT NULL DEFAULT 1,
+      free_trial_total INTEGER NOT NULL DEFAULT 6,
+      free_trial_used INTEGER NOT NULL DEFAULT 0,
+      max_images_per_upload INTEGER NOT NULL DEFAULT 1,
+      enabled_grades TEXT NOT NULL DEFAULT '["七年级","八年级"]',
+      enabled_subjects TEXT NOT NULL DEFAULT '["math","english"]',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    INSERT INTO trial_access (
+      id, user_id, student_id, phone, invite_code, whitelist_enabled,
+      free_trial_total, free_trial_used, max_images_per_upload,
+      enabled_grades, enabled_subjects, created_at, updated_at
+    )
+    SELECT
+      id, user_id, student_id, phone, invite_code, whitelist_enabled,
+      free_trial_total, free_trial_used, max_images_per_upload,
+      enabled_grades, enabled_subjects, created_at, updated_at
+    FROM trial_access_legacy;
+
+    DROP TABLE trial_access_legacy;
+  `);
+}
+
+function createDefaultTrialAccessForStudent(studentId: number) {
+  const db = getDb();
+  const student = db.prepare(`SELECT s.id, s.user_id, s.grade, s.name, COALESCE(u.phone, '13800000001') AS phone FROM students s INNER JOIN users u ON u.id = s.user_id WHERE s.id = ?`).get(studentId) as { id: number; user_id: number; grade: string | null; name: string; phone: string | null } | undefined;
+  if (!student) {
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const existingForUser = db.prepare(`SELECT COUNT(*) AS count FROM trial_access WHERE user_id = ?`).get(student.user_id) as { count: number };
+  const inviteCode = existingForUser.count === 0 ? "CHENMATH01" : `CHEN-${student.id}`;
+  db.prepare(`INSERT INTO trial_access (user_id, student_id, phone, invite_code, whitelist_enabled, free_trial_total, free_trial_used, max_images_per_upload, enabled_grades, enabled_subjects, created_at, updated_at) VALUES (?, ?, ?, ?, 1, 50, 0, 1, ?, ?, ?, ?)`)
+    .run(student.user_id, student.id, student.phone, inviteCode, stringify(student.grade ? [student.grade] : ["七年级", "八年级"]), stringify(["math", "english"]), now, now);
+}
+
+function ensureMultiStudentSeed() {
+  const db = getDb();
+  const parent = db.prepare(`SELECT id, COALESCE(phone, '13800000001') AS phone FROM users WHERE role = 'parent' ORDER BY id ASC LIMIT 1`).get() as { id: number; phone: string | null } | undefined;
+  if (!parent) {
+    return;
+  }
+
+  const students = db.prepare(`SELECT id FROM students WHERE user_id = ? ORDER BY id ASC`).all(parent.id) as Array<{ id: number }>;
+  if (students.length < 2) {
+    db.prepare(`INSERT INTO students (user_id, name, grade, school, created_at) VALUES (?, ?, ?, ?, ?)`)
+      .run(parent.id, "林可可", "八年级", "本地演示学校", new Date().toISOString());
+  }
+
+  const allStudents = db.prepare(`SELECT id FROM students WHERE user_id = ? ORDER BY id ASC`).all(parent.id) as Array<{ id: number }>;
+  for (const student of allStudents) {
+    const exists = db.prepare(`SELECT id FROM trial_access WHERE student_id = ? LIMIT 1`).get(student.id) as { id: number } | undefined;
+    if (!exists) {
+      createDefaultTrialAccessForStudent(student.id);
+    }
+  }
+}
+
 export function ensureProductSchema() {
   const db = getDb();
 
@@ -79,7 +156,7 @@ export function ensureProductSchema() {
   db.exec(`
     CREATE TABLE IF NOT EXISTS trial_access (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL UNIQUE,
+      user_id INTEGER NOT NULL,
       student_id INTEGER NOT NULL UNIQUE,
       phone TEXT,
       invite_code TEXT,
@@ -148,17 +225,24 @@ export function ensureProductSchema() {
       event_value TEXT,
       created_at TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS recheck_tasks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      student_id INTEGER NOT NULL,
+      diagnosis_id INTEGER,
+      weekly_report_id INTEGER,
+      status TEXT NOT NULL DEFAULT 'planned',
+      next_priority TEXT,
+      due_date TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
   `);
 
+  ensureTrialAccessTableSupportsMultiStudent();
+  ensureMultiStudentSeed();
+
   const now = new Date().toISOString();
-  const trialCount = (db.prepare(`SELECT COUNT(*) AS count FROM trial_access`).get() as { count: number }).count;
-  if (trialCount === 0) {
-    db.prepare(`INSERT INTO trial_access (user_id, student_id, phone, invite_code, whitelist_enabled, free_trial_total, free_trial_used, max_images_per_upload, enabled_grades, enabled_subjects, created_at, updated_at) VALUES (?, ?, '13800000001', 'CHENMATH01', 1, 6, 0, 1, ?, ?, ?, ?)`)
-      .run(getPrimaryUserId(), getPrimaryStudentId(), stringify(["七年级", "八年级"]), stringify(["math", "english"]), now, now);
-  }
-
-  db.exec(`UPDATE trial_access SET free_trial_total = CASE WHEN free_trial_total < 50 THEN 50 ELSE free_trial_total END;`);
-
   const assetCount = (db.prepare(`SELECT COUNT(*) AS count FROM skill_assets`).get() as { count: number }).count;
   if (assetCount === 0) {
     const insert = db.prepare(`INSERT INTO skill_assets (subject, module, tag, difficulty, asset_type, title, summary, file_url, preview_url, use_stage, paid_only, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
@@ -171,17 +255,42 @@ export function ensureProductSchema() {
 export function getTrialAccessSnapshot(studentId = getPrimaryStudentId()): TrialAccessSnapshot {
   ensureProductSchema();
   const db = getDb();
-  const row = db.prepare(`SELECT ta.user_id, ta.student_id, ta.phone, ta.invite_code, ta.free_trial_total, ta.free_trial_used, ta.max_images_per_upload, ta.enabled_grades, ta.enabled_subjects, s.grade FROM trial_access ta INNER JOIN students s ON s.id = ta.student_id WHERE ta.student_id = ? LIMIT 1`).get(studentId) as { user_id: number; student_id: number; phone: string | null; invite_code: string | null; free_trial_total: number; free_trial_used: number; max_images_per_upload: number; enabled_grades: string; enabled_subjects: string; grade: string | null; };
+  let row = db.prepare(`SELECT ta.user_id, ta.student_id, ta.phone, ta.invite_code, ta.whitelist_enabled, ta.free_trial_total, ta.free_trial_used, ta.max_images_per_upload, ta.enabled_grades, ta.enabled_subjects, s.grade, s.name AS student_name FROM trial_access ta INNER JOIN students s ON s.id = ta.student_id WHERE ta.student_id = ? LIMIT 1`).get(studentId) as { user_id: number; student_id: number; phone: string | null; invite_code: string | null; whitelist_enabled: number; free_trial_total: number; free_trial_used: number; max_images_per_upload: number; enabled_grades: string; enabled_subjects: string; grade: string | null; student_name: string } | undefined;
+
+  if (!row) {
+    createDefaultTrialAccessForStudent(studentId);
+    row = db.prepare(`SELECT ta.user_id, ta.student_id, ta.phone, ta.invite_code, ta.whitelist_enabled, ta.free_trial_total, ta.free_trial_used, ta.max_images_per_upload, ta.enabled_grades, ta.enabled_subjects, s.grade, s.name AS student_name FROM trial_access ta INNER JOIN students s ON s.id = ta.student_id WHERE ta.student_id = ? LIMIT 1`).get(studentId) as typeof row;
+  }
+
+  if (!row) {
+    throw new Error(`trial_access missing for student ${studentId}`);
+  }
+
   const enabledGrades = parseArray(row.enabled_grades);
   const enabledSubjects = parseArray(row.enabled_subjects).filter((item): item is Subject => item === "math" || item === "english");
   const gradeOpen = enabledGrades.length === 0 || enabledGrades.includes(row.grade ?? "");
-  return { userId: row.user_id, studentId: row.student_id, phone: row.phone, inviteCode: row.invite_code, freeTrialTotal: row.free_trial_total, freeTrialUsed: row.free_trial_used, freeTrialRemaining: Math.max(0, row.free_trial_total - row.free_trial_used), maxImagesPerUpload: row.max_images_per_upload, enabledGrades, enabledSubjects, gradeOpen, subjectOpenMap: { math: enabledSubjects.includes("math"), english: enabledSubjects.includes("english") } };
+  return {
+    userId: row.user_id,
+    studentId: row.student_id,
+    studentName: row.student_name,
+    phone: row.phone,
+    inviteCode: row.invite_code,
+    whitelistEnabled: Boolean(row.whitelist_enabled),
+    freeTrialTotal: row.free_trial_total,
+    freeTrialUsed: row.free_trial_used,
+    freeTrialRemaining: Math.max(0, row.free_trial_total - row.free_trial_used),
+    maxImagesPerUpload: row.max_images_per_upload,
+    enabledGrades,
+    enabledSubjects,
+    gradeOpen,
+    subjectOpenMap: { math: enabledSubjects.includes("math"), english: enabledSubjects.includes("english") }
+  };
 }
 
 export function verifyTrialIdentity(userId: number, phone?: string | null, inviteCode?: string | null) {
   ensureProductSchema();
   const db = getDb();
-  const row = db.prepare(`SELECT phone, invite_code FROM trial_access WHERE user_id = ? LIMIT 1`).get(userId) as { phone: string | null; invite_code: string | null } | undefined;
+  const row = db.prepare(`SELECT phone, invite_code FROM trial_access WHERE user_id = ? ORDER BY id ASC LIMIT 1`).get(userId) as { phone: string | null; invite_code: string | null } | undefined;
   if (!row) return true;
   if (!phone && !inviteCode) return true;
   return row.phone === (phone ?? null) || row.invite_code === (inviteCode ?? null);
@@ -189,6 +298,7 @@ export function verifyTrialIdentity(userId: number, phone?: string | null, invit
 
 export function validateUploadAccess(studentId: number, subject: Subject, imageCount: number) {
   const access = getTrialAccessSnapshot(studentId);
+  if (!access.whitelistEnabled) return { ok: false, message: "这位孩子现在先没在试用白名单里，我先不给你往下跑。" } as const;
   if (!access.gradeOpen) return { ok: false, message: "这位孩子现在还没开到这个年级，我先给你留着入口。" } as const;
   if (!access.subjectOpenMap[subject]) return { ok: false, message: `${subject === "math" ? "数学" : "英语"}这条线现在还没放开，我先替你记下。` } as const;
   if (imageCount > access.maxImagesPerUpload) return { ok: false, message: `这次先传 ${access.maxImagesPerUpload} 张就够了，我先帮你看最关键的那张。` } as const;
@@ -304,7 +414,8 @@ export function getEnhancedDiagnosisDetail(id: number): DiagnosisDetail | null {
   const fallback: DiagnosisPayload = { current_stage: row.current_stage, subject: row.subject, module: row.module, problem_tags: parseArray(row.problem_tags), repair_actions: parseArray(row.repair_actions), parent_summary: row.parent_summary, confidence: row.confidence, review_status: row.review_status };
   const draftDiagnosis = parseObject<DiagnosisPayload>(row.draft_diagnosis, fallback);
   const approvedDiagnosis = row.approved_diagnosis ? parseObject<DiagnosisPayload>(row.approved_diagnosis, draftDiagnosis) : null;
-  return { id: row.id, studentId: row.student_id, studentName: row.student_name, uploadId: row.upload_id, subject: row.subject, module: row.module, diagnosisMode: (row.diagnosis_mode ?? "standard") as DiagnosisMode, currentStage: row.current_stage, problemTags: parseArray(row.problem_tags), repairActions: parseArray(row.repair_actions), parentSummary: row.parent_summary, confidence: row.confidence, reviewStatus: row.review_status, rawJson: approvedDiagnosis ?? draftDiagnosis, draftDiagnosis, approvedDiagnosis, reviewNotes: row.review_notes, reviewDiff: parseObject<Record<string, unknown> | null>(row.review_diff, null), createdAt: row.created_at, scoreNote: row.score_note, studentSelfReport: row.student_self_report, stuckPointChoice: row.stuck_point_choice, stuckPointSource: (row.stuck_point_source ?? "parent_selected") as StuckPointSource, stepsText: row.steps_text, hasSteps: Boolean(row.has_steps), stepQuality: (row.step_quality ?? "none") as StepQuality, fileName: row.file_name };
+  const currentPayload = parseObject<DiagnosisPayload>(row.diagnosis_json, approvedDiagnosis ?? draftDiagnosis);
+  return { id: row.id, studentId: row.student_id, studentName: row.student_name, uploadId: row.upload_id, subject: row.subject, module: row.module, diagnosisMode: (row.diagnosis_mode ?? "standard") as DiagnosisMode, currentStage: row.current_stage, problemTags: parseArray(row.problem_tags), repairActions: parseArray(row.repair_actions), parentSummary: row.parent_summary, confidence: row.confidence, reviewStatus: row.review_status, rawJson: currentPayload, draftDiagnosis, approvedDiagnosis, reviewNotes: row.review_notes, reviewDiff: parseObject<Record<string, unknown> | null>(row.review_diff, null), createdAt: row.created_at, scoreNote: row.score_note, studentSelfReport: row.student_self_report, stuckPointChoice: row.stuck_point_choice, stuckPointSource: (row.stuck_point_source ?? "parent_selected") as StuckPointSource, stepsText: row.steps_text, hasSteps: Boolean(row.has_steps), stepQuality: (row.step_quality ?? "none") as StepQuality, fileName: row.file_name };
 }
 
 export function getRecommendedSkillAssetByDiagnosis(diagnosisId: number) {
@@ -336,6 +447,6 @@ export function getSkillAssetSeedSummary() {
 export function getCurrentTableCounts() {
   ensureProductSchema();
   const db = getDb();
-  const tables = ["trial_access", "student_memory", "skill_assets", "model_call_logs", "result_page_events"];
+  const tables = ["trial_access", "student_memory", "skill_assets", "model_call_logs", "result_page_events", "recheck_tasks"];
   return Object.fromEntries(tables.map((table) => [table, (db.prepare(`SELECT COUNT(*) AS count FROM ${table}`).get() as { count: number }).count]));
 }

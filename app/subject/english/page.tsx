@@ -1,13 +1,16 @@
-﻿export const dynamic = "force-dynamic";
+export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { SectionCard } from "@/components/section-card";
 import { Badge } from "@/components/ui/badge";
 import { ENGLISH_BACKEND_TAGS } from "@/lib/mock-data";
 import { getSubjectSnapshot } from "@/lib/db";
+import { getActiveStudentId, getServerSession } from "@/lib/session";
 
-export default function EnglishSubjectPage() {
-  const snapshot = getSubjectSnapshot("english");
+export default async function EnglishSubjectPage() {
+  const session = await getServerSession();
+  const studentId = getActiveStudentId(session);
+  const snapshot = getSubjectSnapshot("english", studentId);
 
   return (
     <div className="space-y-6">
@@ -75,4 +78,3 @@ export default function EnglishSubjectPage() {
     </div>
   );
 }
-

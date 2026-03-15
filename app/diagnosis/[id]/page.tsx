@@ -1,4 +1,4 @@
-﻿export const dynamic = "force-dynamic";
+export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -6,6 +6,7 @@ import { DiagnosisResultActions } from "@/components/diagnosis-result-actions";
 import { SectionCard } from "@/components/section-card";
 import { Badge } from "@/components/ui/badge";
 import { getLatestWeeklyReport } from "@/lib/db";
+import { getMemorySummary } from "@/lib/db/memory";
 import { getEnhancedDiagnosisDetail, getRecommendedSkillAssetByDiagnosis } from "@/lib/db/product";
 import { formatDate, reviewStatusLabel, subjectLabel } from "@/lib/utils";
 
@@ -15,8 +16,9 @@ export default async function DiagnosisPage({ params }: { params: Promise<{ id: 
 
   if (!diagnosis) notFound();
 
-  const latestReportId = getLatestWeeklyReport();
+  const latestReportId = getLatestWeeklyReport(diagnosis.studentId);
   const recommendedAsset = getRecommendedSkillAssetByDiagnosis(diagnosis.id);
+  const memory = diagnosis.studentId ? getMemorySummary(diagnosis.studentId) : null;
 
   return (
     <div className="space-y-6">
@@ -93,6 +95,15 @@ export default async function DiagnosisPage({ params }: { params: Promise<{ id: 
             <p className="text-sm leading-7 text-slate">这条还没进正式归档版，先按 AI 初判看。</p>
           )}
           {diagnosis.reviewNotes ? <p className="mt-4 rounded-2xl bg-mist px-4 py-3 text-sm leading-6 text-ink">审核备注：{diagnosis.reviewNotes}</p> : null}
+        </SectionCard>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <SectionCard title="复检状态" subtitle="这轮先占位，下一轮复检会从这里接上。">
+          <p className="text-sm leading-7 text-slate">还没进入复检任务，这轮先把主卡点压住。后面会按学生独立生成复检任务，不会串到别的孩子身上。</p>
+        </SectionCard>
+        <SectionCard title="下轮优先级" subtitle="先把下一轮最该盯的点挂出来。">
+          <p className="text-base leading-8 text-ink">{memory?.next_priority ?? "下一轮优先级先按这次主卡点往下接。"}</p>
         </SectionCard>
       </div>
 

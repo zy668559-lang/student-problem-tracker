@@ -1,4 +1,4 @@
-﻿export const dynamic = "force-dynamic";
+export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { MetricCard } from "@/components/metric-card";
@@ -6,10 +6,13 @@ import { SectionCard } from "@/components/section-card";
 import { Badge } from "@/components/ui/badge";
 import { getDashboardSnapshot } from "@/lib/db";
 import { getMemorySummary } from "@/lib/db/memory";
+import { getActiveStudentId, getServerSession } from "@/lib/session";
 
-export default function DashboardPage() {
-  const snapshot = getDashboardSnapshot();
-  const memory = getMemorySummary();
+export default async function DashboardPage() {
+  const session = await getServerSession();
+  const studentId = getActiveStudentId(session);
+  const snapshot = getDashboardSnapshot(studentId);
+  const memory = getMemorySummary(studentId);
 
   return (
     <div className="space-y-6">

@@ -1,6 +1,6 @@
-﻿import { NextResponse } from "next/server";
-import { getPrimaryStudentId } from "@/lib/db";
+import { NextResponse } from "next/server";
 import { appendResultPageEvent, ensureProductSchema } from "@/lib/db/product";
+import { getActiveStudentId, parseSessionFromCookieHeader } from "@/lib/session";
 import type { ResultEventName } from "@/lib/types";
 
 export async function POST(request: Request) {
@@ -11,8 +11,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, message: "事件信息还没给全。" }, { status: 400 });
   }
 
+  const session = parseSessionFromCookieHeader(request.headers.get("cookie"));
+
   appendResultPageEvent({
-    studentId: getPrimaryStudentId(),
+    studentId: getActiveStudentId(session),
     diagnosisId: body.diagnosisId,
     eventName: body.eventName,
     assetId: body.assetId ?? null,

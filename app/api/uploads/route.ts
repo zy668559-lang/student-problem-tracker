@@ -1,11 +1,10 @@
-﻿import fs from "node:fs/promises";
+import fs from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
 import {
   createDiagnosisRecord,
   createRepairTasks,
   createUploadRecord,
-  getPrimaryStudentId,
   upsertWeeklyReport
 } from "@/lib/db";
 import {
@@ -18,6 +17,7 @@ import {
 } from "@/lib/db/product";
 import { analyzeUpload, generateWeeklyReport } from "@/lib/services/ai";
 import { softenUploadError } from "@/lib/services/tone-chen";
+import { getActiveStudentId, parseSessionFromCookieHeader } from "@/lib/session";
 import type { DiagnosisMode, StepQuality, StuckPointSource, Subject, TrialAccessSnapshot } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -55,7 +55,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, message: "模块先选一下，我才能更准地帮你判断。" }, { status: 400 });
   }
 
-  const studentId = getPrimaryStudentId();
+  const session = parseSessionFromCookieHeader(request.headers.get("cookie"));
+  const studentId = getActiveStudentId(session);
   const guard = validateUploadAccess(studentId, subject as Subject, 1) as { ok: true; access: TrialAccessSnapshot } | { ok: false; message: string };
   if (!guard.ok) {
     return NextResponse.json({ ok: false, message: guard.message }, { status: 403 });

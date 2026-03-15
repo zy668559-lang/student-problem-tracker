@@ -1,6 +1,8 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { authenticateUser } from "@/lib/db";
+import { listStudentsForUser } from "@/lib/db/admin";
 import { ensureProductSchema, verifyTrialIdentity } from "@/lib/db/product";
+import { serializeSessionValue } from "@/lib/session";
 
 export async function POST(request: Request) {
   ensureProductSchema();
@@ -20,11 +22,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, message: "白名单手机号或邀请码这次没对上，我先不给你放行。" }, { status: 403 });
   }
 
+  const students = listStudentsForUser(user.id);
   const response = NextResponse.json({ ok: true });
-  response.cookies.set("spt_session", JSON.stringify({
+  response.cookies.set("spt_session", serializeSessionValue({
     userId: user.id,
     role: user.role,
-    studentId: user.student_id
+    activeStudentId: students[0]?.id ?? user.student_id ?? null,
+    studentIds: students.map((student) => student.id)
   }), {
     httpOnly: true,
     sameSite: "lax",

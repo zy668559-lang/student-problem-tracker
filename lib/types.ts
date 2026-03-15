@@ -1,4 +1,4 @@
-﻿export type Subject = "math" | "english";
+export type Subject = "math" | "english";
 
 export type ReviewStatus = "pending" | "approved" | "rejected" | "edited";
 export type DiagnosisMode = "quick" | "standard" | "deep";
@@ -45,8 +45,10 @@ export interface MemorySummary {
 export interface TrialAccessSnapshot {
   userId: number;
   studentId: number;
+  studentName?: string;
   phone: string | null;
   inviteCode: string | null;
+  whitelistEnabled?: boolean;
   freeTrialTotal: number;
   freeTrialUsed: number;
   freeTrialRemaining: number;
@@ -160,4 +162,53 @@ export interface ModelCallLogDetail {
   errorCode: string | null;
   retryCount: number;
   createdAt: string;
+}
+
+export interface AppSession {
+  userId: number;
+  role: string;
+  activeStudentId: number | null;
+  studentIds: number[];
+}
+
+export interface StudentOption {
+  id: number;
+  userId: number;
+  name: string;
+  grade: string | null;
+  school: string | null;
+  nextPriority?: string | null;
+}
+
+export interface AdminTrialAccessItem extends TrialAccessSnapshot {
+  id: number;
+  userName: string;
+  grade: string | null;
+}
+
+export interface AdminStudentRow {
+  studentId: number;
+  studentName: string;
+  grade: string | null;
+  school: string | null;
+  parentName: string;
+  parentEmail: string;
+  latestUploadLabel: string | null;
+  latestUploadAt: string | null;
+  latestDiagnosisId: number | null;
+  latestDiagnosisStage: string | null;
+  latestDiagnosisStatus: ReviewStatus | null;
+  latestDiagnosisAt: string | null;
+  latestWeeklyReportId: number | null;
+  recentMemoryTags: string[];
+  nextPriority: string | null;
+}
+
+export interface AdminOperationsSnapshot {
+  totalCalls: number;
+  failedCalls: number;
+  estimatedCost: number;
+  averageLatencyMs: number;
+  latestFailures: ModelCallLogDetail[];
+  latestCalls: ModelCallLogDetail[];
 }
