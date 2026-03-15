@@ -56,7 +56,7 @@ async function uploadAndOpenDiagnosis(page: Page, testInfo: TestInfo, reportLabe
   await page.locator('button[type="submit"]').click();
 
   await expect(page).toHaveURL(/\/diagnosis\/\d+$/, { timeout: 180_000 });
-  await expect(page.locator("pre")).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator("pre").first()).toBeVisible({ timeout: 30_000 });
   await expect(page.locator("main")).toContainText("家长这周先这么看", { timeout: 30_000 });
   await page.screenshot({ path: testInfo.outputPath(`04-diagnosis-page-${reportLabel}.png`), fullPage: true });
 
@@ -77,9 +77,7 @@ async function uploadAndOpenDiagnosis(page: Page, testInfo: TestInfo, reportLabe
 }
 
 function reviewCard(page: Page, diagnosisId: number) {
-  return page.locator("article").filter({
-    has: page.locator(`a[href="/diagnosis/${diagnosisId}"]`)
-  }).first();
+  return page.locator("article").filter({ has: page.locator(`a[href="/diagnosis/${diagnosisId}"]`) }).first();
 }
 
 test("full closure: login -> upload -> diagnosis -> weekly report -> review edit -> approve", async ({ page }, testInfo) => {
@@ -103,15 +101,15 @@ test("full closure: login -> upload -> diagnosis -> weekly report -> review edit
     review_status: "pending"
   };
 
-  await card.locator("textarea").fill(JSON.stringify(editedPayload, null, 2));
+  await card.locator("textarea").first().fill(JSON.stringify(editedPayload, null, 2));
   await card.locator("button").nth(1).click();
-  await expect(reviewCard(page, diagnosisId).locator("textarea")).toContainText("Playwright Repair Action A");
+  await expect(reviewCard(page, diagnosisId).locator("textarea").first()).toContainText("Playwright Repair Action A");
 
   await reviewCard(page, diagnosisId).locator("button").nth(0).click();
   await page.screenshot({ path: testInfo.outputPath("07-review-queue-approved.png"), fullPage: true });
 
   await page.goto(`/diagnosis/${diagnosisId}`);
-  await expect(page.locator("pre")).toContainText('"review_status": "approved"');
+  await expect(page.locator("main")).toContainText("已通过");
   await expect(page.locator("main")).toContainText("Playwright Repair Action A");
   await expect(page.locator("main")).toContainText("家长这周先这么看：Playwright updated parent summary.");
 
@@ -134,5 +132,5 @@ test("review queue can reject a generated diagnosis", async ({ page }, testInfo)
   await page.screenshot({ path: testInfo.outputPath("08-review-queue-rejected.png"), fullPage: true });
 
   await page.goto(`/diagnosis/${diagnosisId}`);
-  await expect(page.locator("pre")).toContainText('"review_status": "rejected"');
+  await expect(page.locator("main")).toContainText("已驳回");
 });

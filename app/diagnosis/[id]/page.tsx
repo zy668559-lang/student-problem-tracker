@@ -2,20 +2,21 @@
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { DiagnosisResultActions } from "@/components/diagnosis-result-actions";
 import { SectionCard } from "@/components/section-card";
 import { Badge } from "@/components/ui/badge";
-import { getDiagnosisDetail, getLatestWeeklyReport } from "@/lib/db";
+import { getLatestWeeklyReport } from "@/lib/db";
+import { getEnhancedDiagnosisDetail, getRecommendedSkillAssetByDiagnosis } from "@/lib/db/product";
 import { formatDate, reviewStatusLabel, subjectLabel } from "@/lib/utils";
 
 export default async function DiagnosisPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const diagnosis = getDiagnosisDetail(Number(id));
+  const diagnosis = getEnhancedDiagnosisDetail(Number(id));
 
-  if (!diagnosis) {
-    notFound();
-  }
+  if (!diagnosis) notFound();
 
   const latestReportId = getLatestWeeklyReport();
+  const recommendedAsset = getRecommendedSkillAssetByDiagnosis(diagnosis.id);
 
   return (
     <div className="space-y-6">
@@ -24,71 +25,83 @@ export default async function DiagnosisPage({ params }: { params: Promise<{ id: 
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent/70">Diagnosis</p>
             <h1 className="mt-3 text-3xl font-semibold text-ink">{diagnosis.studentName} 的诊断结果</h1>
-            <p className="mt-3 text-sm leading-7 text-slate">
-              {subjectLabel(diagnosis.subject)} / {diagnosis.module} · {formatDate(diagnosis.createdAt)}
-            </p>
+            <p className="mt-3 text-sm leading-7 text-slate">{subjectLabel(diagnosis.subject)} / {diagnosis.module} · {formatDate(diagnosis.createdAt)}</p>
           </div>
           <div className="flex flex-wrap gap-3">
             <Badge tone="accent">置信度 {(diagnosis.confidence * 100).toFixed(0)}%</Badge>
-            <Badge tone={diagnosis.reviewStatus === "approved" ? "accent" : diagnosis.reviewStatus === "rejected" ? "rose" : "gold"}>
-              {reviewStatusLabel(diagnosis.reviewStatus)}
-            </Badge>
+            <Badge tone={diagnosis.reviewStatus === "approved" ? "accent" : diagnosis.reviewStatus === "rejected" ? "rose" : "gold"}>{reviewStatusLabel(diagnosis.reviewStatus)}</Badge>
+            <Badge tone="ink">{diagnosis.diagnosisMode}</Badge>
           </div>
         </div>
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-        <SectionCard title="阶段判断" subtitle="当前阶段必须能让家长一眼看懂。">
+      <div className="grid gap-6 lg:grid-cols-3">
+        <SectionCard title="这次更像卡在哪" subtitle="先说人话，不拐弯。">
           <p className="text-base leading-8 text-ink">{diagnosis.currentStage}</p>
         </SectionCard>
-        <SectionCard title="上传信息" subtitle="追溯本次诊断来源。">
+        <SectionCard title="这周先改哪一步" subtitle="动作只留一个起手重点。">
+          <p className="text-base leading-8 text-ink">{diagnosis.repairActions[0] ?? "这次先把第一条错因压住。"}</p>
+        </SectionCard>
+        <SectionCard title="先看这个" subtitle="只推一个最贴近这次卡点的素材。">
+          {recommendedAsset ? (
+            <div className="space-y-3 text-sm leading-6 text-slate">
+              <p className="text-lg font-semibold text-ink">{recommendedAsset.title}</p>
+              <p>{recommendedAsset.summary}</p>
+              <p>标签：{recommendedAsset.tag}</p>
+              <p>{recommendedAsset.paidOnly ? "这条是付费追踪内素材。" : "这条可以先免费看看。"}</p>
+            </div>
+          ) : <p className="text-sm leading-7 text-slate">这次先没推荐素材，我先把诊断和动作给你落下来。</p>}
+        </SectionCard>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+        <SectionCard title="上传信息" subtitle="这次我是按什么线索判断的。">
           <div className="space-y-3 text-sm leading-6 text-slate">
             <p><span className="font-semibold text-ink">文件：</span>{diagnosis.fileName}</p>
-            <p><span className="font-semibold text-ink">分数备注：</span>{diagnosis.scoreNote ?? "未填写"}</p>
-            <p><span className="font-semibold text-ink">学生自述：</span>{diagnosis.studentSelfReport ?? "未填写"}</p>
+            <p><span className="font-semibold text-ink">分数备注：</span>{diagnosis.scoreNote ?? "没填也没关系"}</p>
+            <p><span className="font-semibold text-ink">学生自述：</span>{diagnosis.studentSelfReport ?? "这次没写，我先按图判断了。"}</p>
+            <p><span className="font-semibold text-ink">轻自评卡点：</span>{diagnosis.stuckPointChoice ?? "这次没选，我先帮你自动判断。"}</p>
+            <p><span className="font-semibold text-ink">步骤状态：</span>{diagnosis.hasSteps ? `${diagnosis.stepQuality}（有步骤）` : "none（没给步骤）"}</p>
           </div>
+        </SectionCard>
+        <SectionCard title="家长摘要" subtitle="我直接把这次判断说透。">
+          <p className="text-base leading-8 text-ink">{diagnosis.parentSummary}</p>
         </SectionCard>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <SectionCard title="问题标签" subtitle="结构化字段 problem_tags。">
+        <SectionCard title="问题标签" subtitle="这次最需要盯住的点。">
           <div className="flex flex-wrap gap-3">
-            {diagnosis.problemTags.map((item) => (
-              <Badge key={item} tone="rose">{item}</Badge>
-            ))}
+            {diagnosis.problemTags.map((item) => <Badge key={item} tone="rose">{item}</Badge>)}
           </div>
         </SectionCard>
-        <SectionCard title="修复动作" subtitle="结构化字段 repair_actions。">
+        <SectionCard title="修复动作" subtitle="别贪多，这几条够用了。">
           <ul className="space-y-3 text-sm leading-6 text-slate">
-            {diagnosis.repairActions.map((item) => (
-              <li key={item} className="rounded-2xl bg-mist px-4 py-3 text-ink">{item}</li>
-            ))}
+            {diagnosis.repairActions.map((item) => <li key={item} className="rounded-2xl bg-mist px-4 py-3 text-ink">{item}</li>)}
           </ul>
         </SectionCard>
       </div>
 
-      <SectionCard title="家长摘要" subtitle="结构化字段 parent_summary。">
-        <p className="text-base leading-8 text-ink">{diagnosis.parentSummary}</p>
-      </SectionCard>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <SectionCard title="AI 初判" subtitle="先保留模型第一反应，后面可对比。">
+          <pre className="overflow-x-auto rounded-3xl bg-[#0f172a] p-5 text-sm leading-7 text-slate-100">{JSON.stringify(diagnosis.draftDiagnosis, null, 2)}</pre>
+        </SectionCard>
+        <SectionCard title="审核归档版" subtitle="老师确认后，家长端以后都按这一版看。">
+          {diagnosis.approvedDiagnosis ? (
+            <pre className="overflow-x-auto rounded-3xl bg-[#0f172a] p-5 text-sm leading-7 text-slate-100">{JSON.stringify(diagnosis.approvedDiagnosis, null, 2)}</pre>
+          ) : (
+            <p className="text-sm leading-7 text-slate">这条还没进正式归档版，先按 AI 初判看。</p>
+          )}
+          {diagnosis.reviewNotes ? <p className="mt-4 rounded-2xl bg-mist px-4 py-3 text-sm leading-6 text-ink">审核备注：{diagnosis.reviewNotes}</p> : null}
+        </SectionCard>
+      </div>
 
-      <SectionCard title="诊断 JSON" subtitle="审核台可直接基于这份 JSON 通过、修改或驳回。">
-        <pre className="overflow-x-auto rounded-3xl bg-[#0f172a] p-5 text-sm leading-7 text-slate-100">
-          {JSON.stringify(diagnosis.rawJson, null, 2)}
-        </pre>
-      </SectionCard>
+      <DiagnosisResultActions diagnosisId={diagnosis.id} assetId={recommendedAsset?.id ?? null} assetTitle={recommendedAsset?.title ?? null} />
 
       <div className="flex flex-wrap gap-3">
-        <Link href="/review-queue" className="rounded-2xl bg-ink px-5 py-3 text-sm font-semibold text-white">
-          前往审核台
-        </Link>
-        <Link
-          href={latestReportId ? `/weekly-report/${latestReportId}` : "/dashboard"}
-          className="rounded-2xl border border-line bg-white px-5 py-3 text-sm font-semibold text-ink"
-        >
-          查看周总结
-        </Link>
+        <Link href="/review-queue" className="rounded-2xl bg-ink px-5 py-3 text-sm font-semibold text-white">前往审核台</Link>
+        <Link href={latestReportId ? `/weekly-report/${latestReportId}` : "/dashboard"} className="rounded-2xl border border-line bg-white px-5 py-3 text-sm font-semibold text-ink">查看周总结</Link>
       </div>
     </div>
   );
 }
-

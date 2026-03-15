@@ -9,6 +9,7 @@ import type { ReviewQueueItem } from "@/lib/types";
 export function ReviewQueueItemCard({ item }: { item: ReviewQueueItem }) {
   const router = useRouter();
   const [payloadText, setPayloadText] = useState(JSON.stringify(item.payload, null, 2));
+  const [reviewNotes, setReviewNotes] = useState(item.reviewNotes ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,12 +22,12 @@ export function ReviewQueueItemCard({ item }: { item: ReviewQueueItem }) {
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ action, payloadText })
+      body: JSON.stringify({ action, payloadText, reviewNotes })
     });
 
     const result = (await response.json()) as { ok: boolean; message?: string };
     if (!response.ok || !result.ok) {
-      setError(result.message ?? "提交失败");
+      setError(result.message ?? "这次没存进去，我再帮你试一次。");
       setLoading(false);
       return;
     }
@@ -48,9 +49,7 @@ export function ReviewQueueItemCard({ item }: { item: ReviewQueueItem }) {
           <h3 className="mt-3 text-xl font-semibold text-ink">{item.studentName}</h3>
           <p className="mt-2 text-sm text-slate">生成时间：{formatDate(item.createdAt)} · 置信度 {(item.confidence * 100).toFixed(0)}%</p>
         </div>
-        <a href={`/diagnosis/${item.id}`} className="text-sm font-semibold text-accent">
-          查看诊断页
-        </a>
+        <a href={`/diagnosis/${item.id}`} className="text-sm font-semibold text-accent">查看诊断页</a>
       </div>
 
       <textarea
@@ -60,33 +59,23 @@ export function ReviewQueueItemCard({ item }: { item: ReviewQueueItem }) {
         className="mt-5 w-full rounded-3xl border border-line bg-[#0f172a] px-4 py-4 font-mono text-sm leading-6 text-slate-100 outline-none transition focus:border-accent"
       />
 
+      <label className="mt-4 block">
+        <span className="mb-2 block text-sm font-medium text-ink">审核备注</span>
+        <textarea
+          value={reviewNotes}
+          onChange={(event) => setReviewNotes(event.target.value)}
+          rows={3}
+          placeholder="例如：这次我把孩子最容易乱的那一步单独拎出来了。"
+          className="w-full rounded-2xl border border-line bg-mist/60 px-4 py-3 text-sm outline-none transition focus:border-accent"
+        />
+      </label>
+
       {error ? <p className="mt-4 text-sm text-rose">{error}</p> : null}
 
       <div className="mt-5 flex flex-wrap gap-3">
-        <button
-          type="button"
-          onClick={() => updateReview("approve")}
-          disabled={loading}
-          className="rounded-2xl bg-accent px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          通过
-        </button>
-        <button
-          type="button"
-          onClick={() => updateReview("edit")}
-          disabled={loading}
-          className="rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          修改并保存
-        </button>
-        <button
-          type="button"
-          onClick={() => updateReview("reject")}
-          disabled={loading}
-          className="rounded-2xl border border-rose/30 bg-rose/10 px-4 py-3 text-sm font-semibold text-rose disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          驳回
-        </button>
+        <button type="button" onClick={() => updateReview("approve")} disabled={loading} className="rounded-2xl bg-accent px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">通过</button>
+        <button type="button" onClick={() => updateReview("edit")} disabled={loading} className="rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">修改并保存</button>
+        <button type="button" onClick={() => updateReview("reject")} disabled={loading} className="rounded-2xl border border-rose/30 bg-rose/10 px-4 py-3 text-sm font-semibold text-rose disabled:cursor-not-allowed disabled:opacity-60">驳回</button>
       </div>
     </article>
   );

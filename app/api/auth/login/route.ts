@@ -1,17 +1,23 @@
 ﻿import { NextResponse } from "next/server";
 import { authenticateUser } from "@/lib/db";
+import { ensureProductSchema, verifyTrialIdentity } from "@/lib/db/product";
 
 export async function POST(request: Request) {
-  const body = (await request.json()) as { email?: string; password?: string };
+  ensureProductSchema();
+  const body = (await request.json()) as { email?: string; password?: string; phone?: string; inviteCode?: string };
 
   if (!body.email || !body.password) {
-    return NextResponse.json({ ok: false, message: "请填写邮箱和密码。" }, { status: 400 });
+    return NextResponse.json({ ok: false, message: "邮箱和密码先填上，我这边才能帮你开门。" }, { status: 400 });
   }
 
   const user = authenticateUser(body.email, body.password);
 
   if (!user) {
-    return NextResponse.json({ ok: false, message: "账号或密码错误。" }, { status: 401 });
+    return NextResponse.json({ ok: false, message: "账号信息这次没对上，咱们再核一眼。" }, { status: 401 });
+  }
+
+  if (!verifyTrialIdentity(user.id, body.phone ?? null, body.inviteCode ?? null)) {
+    return NextResponse.json({ ok: false, message: "白名单手机号或邀请码这次没对上，我先不给你放行。" }, { status: 403 });
   }
 
   const response = NextResponse.json({ ok: true });
