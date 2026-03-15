@@ -7,6 +7,7 @@ import { SectionCard } from "@/components/section-card";
 import { Badge } from "@/components/ui/badge";
 import { getLatestWeeklyReport } from "@/lib/db";
 import { getMemorySummary } from "@/lib/db/memory";
+import { getSubmissionMetaByDiagnosis } from "@/lib/db/p25";
 import { getEnhancedDiagnosisDetail, getRecommendedSkillAssetByDiagnosis } from "@/lib/db/product";
 import { formatDate, reviewStatusLabel, subjectLabel } from "@/lib/utils";
 
@@ -19,6 +20,8 @@ export default async function DiagnosisPage({ params }: { params: Promise<{ id: 
   const latestReportId = getLatestWeeklyReport(diagnosis.studentId);
   const recommendedAsset = getRecommendedSkillAssetByDiagnosis(diagnosis.id);
   const memory = diagnosis.studentId ? getMemorySummary(diagnosis.studentId) : null;
+  const submissionMeta = getSubmissionMetaByDiagnosis(diagnosis.id);
+  const followupRecheckTaskId = submissionMeta.recheckTaskId ?? diagnosis.recheckTaskId ?? null;
 
   return (
     <div className="space-y-6">
@@ -33,6 +36,7 @@ export default async function DiagnosisPage({ params }: { params: Promise<{ id: 
             <Badge tone="accent">置信度 {(diagnosis.confidence * 100).toFixed(0)}%</Badge>
             <Badge tone={diagnosis.reviewStatus === "approved" ? "accent" : diagnosis.reviewStatus === "rejected" ? "rose" : "gold"}>{reviewStatusLabel(diagnosis.reviewStatus)}</Badge>
             <Badge tone="ink">{diagnosis.diagnosisMode}</Badge>
+            <Badge tone="gold">{submissionMeta.submissionType === "recheck" ? "复检结果" : "普通体检"}</Badge>
           </div>
         </div>
       </section>
@@ -50,7 +54,7 @@ export default async function DiagnosisPage({ params }: { params: Promise<{ id: 
               <p className="text-lg font-semibold text-ink">{recommendedAsset.title}</p>
               <p>{recommendedAsset.summary}</p>
               <p>标签：{recommendedAsset.tag}</p>
-              <p>{recommendedAsset.paidOnly ? "这条是付费追踪内素材。" : "这条这次可以先免费看看。"}</p>
+              <p>{recommendedAsset.paidOnly ? "这条在继续追踪里看更合适。" : "这条这次可以先免费看看。"}</p>
             </div>
           ) : <p className="text-sm leading-7 text-slate">这次先不额外推素材，我先把诊断和动作给你落下来。</p>}
         </SectionCard>
@@ -60,7 +64,8 @@ export default async function DiagnosisPage({ params }: { params: Promise<{ id: 
         <SectionCard title="上传信息" subtitle="这次我是按什么线索判断的">
           <div className="space-y-3 text-sm leading-6 text-slate">
             <p><span className="font-semibold text-ink">文件：</span>{diagnosis.fileName}</p>
-            <p><span className="font-semibold text-ink">分数备注：</span>{diagnosis.scoreNote ?? "这次没填也没关系"}</p>
+            <p><span className="font-semibold text-ink">类型：</span>{submissionMeta.submissionType === "recheck" ? "复检上传" : "普通体检上传"}</p>
+            <p><span className="font-semibold text-ink">分数备注：</span>{diagnosis.scoreNote ?? "这次没填也没关系。"}</p>
             <p><span className="font-semibold text-ink">学生自述：</span>{diagnosis.studentSelfReport ?? "这次没写，我先按题图判断了。"}</p>
             <p><span className="font-semibold text-ink">卡点轻自评：</span>{diagnosis.stuckPointChoice ?? "这次没选，我先帮你自动判断。"}</p>
             <p><span className="font-semibold text-ink">步骤状态：</span>{diagnosis.hasSteps ? `${diagnosis.stepQuality}（有步骤）` : "none（没给步骤）"}</p>
@@ -108,6 +113,15 @@ export default async function DiagnosisPage({ params }: { params: Promise<{ id: 
         </SectionCard>
       </div>
 
+      {followupRecheckTaskId ? (
+        <SectionCard title="这条复检怎么接着走" subtitle="别只看完结果，下一步要顺着同一条线继续看">
+          <div className="flex flex-wrap gap-3">
+            <Link href={`/recheck/${followupRecheckTaskId}`} className="rounded-2xl bg-ink px-5 py-3 text-sm font-semibold text-white">进入复检任务页</Link>
+            <Link href={latestReportId ? `/weekly-report/${latestReportId}` : "/dashboard"} className="rounded-2xl border border-line bg-white px-5 py-3 text-sm font-semibold text-ink">看这周对比</Link>
+          </div>
+        </SectionCard>
+      ) : null}
+
       <div className="grid gap-6 lg:grid-cols-2">
         <SectionCard title="AI 初判" subtitle="先保留模型第一反应，后面可对比">
           <pre className="overflow-x-auto rounded-3xl bg-[#0f172a] p-5 text-sm leading-7 text-slate-100">{JSON.stringify(diagnosis.draftDiagnosis, null, 2)}</pre>
@@ -122,7 +136,13 @@ export default async function DiagnosisPage({ params }: { params: Promise<{ id: 
         </SectionCard>
       </div>
 
-      <DiagnosisResultActions diagnosisId={diagnosis.id} assetId={recommendedAsset?.id ?? null} assetTitle={recommendedAsset?.title ?? null} />
+      <DiagnosisResultActions
+        diagnosisId={diagnosis.id}
+        assetId={recommendedAsset?.id ?? null}
+        assetTitle={recommendedAsset?.title ?? null}
+        recheckTaskId={followupRecheckTaskId}
+        submissionType={submissionMeta.submissionType}
+      />
 
       <div className="flex flex-wrap gap-3">
         <Link href="/review-queue" className="rounded-2xl bg-ink px-5 py-3 text-sm font-semibold text-white">前往审核台</Link>
@@ -131,3 +151,5 @@ export default async function DiagnosisPage({ params }: { params: Promise<{ id: 
     </div>
   );
 }
+
+

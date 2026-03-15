@@ -46,7 +46,9 @@ async function resetTrialQuota(page: Page) {
       freeTrialUsed: 0,
       maxImagesPerUpload: 1,
       enabledGrades: ["七年级", "八年级"],
-      enabledSubjects: ["math", "english"]
+      enabledSubjects: ["math", "english"],
+      trackingStatus: "trial",
+      paidTrackingEnabled: false
     }
   });
   expect(response.ok()).toBeTruthy();

@@ -79,7 +79,9 @@ async function resetStudentAccess(page: Page) {
         freeTrialUsed: 0,
         maxImagesPerUpload: 1,
         enabledGrades: [],
-        enabledSubjects: ["math", "english"]
+        enabledSubjects: ["math", "english"],
+        trackingStatus: "trial",
+        paidTrackingEnabled: false
       }
     });
     expect(response.ok()).toBeTruthy();

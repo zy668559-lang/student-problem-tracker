@@ -1,21 +1,24 @@
 ﻿export const dynamic = "force-dynamic";
 
 import Link from "next/link";
+import { OperationsGrowthPanel } from "@/components/admin/operations-growth-panel";
 import { SectionCard } from "@/components/section-card";
 import { getAdminOperationsSnapshot } from "@/lib/db/admin";
+import { listTrackingSnapshotAdmin } from "@/lib/db/p25";
 import { getReviewQueue } from "@/lib/db";
 import { formatDate, reviewStatusLabel, subjectLabel } from "@/lib/utils";
 
 export default function AdminOperationsPage() {
   const operations = getAdminOperationsSnapshot();
   const reviewQueue = getReviewQueue();
+  const tracking = listTrackingSnapshotAdmin();
 
   return (
     <div className="space-y-6">
       <section className="rounded-panel border border-white/70 bg-white/90 p-6 shadow-panel sm:p-8">
         <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent/70">Operations</p>
-        <h1 className="mt-3 text-3xl font-semibold text-ink">审核与成本</h1>
-        <p className="mt-3 max-w-3xl text-sm leading-7 text-slate">这里把审核队列、模型调用、失败记录、估算成本和管理员操作日志放一起。运营看这里，就知道是不是既控住了质量，也控住了成本。</p>
+        <h1 className="mt-3 text-3xl font-semibold text-ink">审核、成本与继续追踪</h1>
+        <p className="mt-3 max-w-3xl text-sm leading-7 text-slate">这里把审核队列、模型调用、失败记录、估算成本、周报批处理和继续追踪转化都放一起。运营看这一页，就知道质量、成本和成交承接有没有同时站住。</p>
       </section>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -70,6 +73,8 @@ export default function AdminOperationsPage() {
           </div>
         </SectionCard>
       </div>
+
+      <OperationsGrowthPanel tracking={tracking} />
 
       <SectionCard title="管理员操作日志" subtitle="谁、什么时间、做了什么">
         <div className="space-y-4 text-sm leading-6 text-slate">

@@ -12,6 +12,7 @@ import {
   storeReviewedDiagnosis,
   upsertStudentMemorySummary
 } from "@/lib/db/product";
+import { decorateWeeklyPayload, ensureP25Schema, persistWeeklyReportArtifacts } from "@/lib/db/p25";
 import { generateWeeklyReport } from "@/lib/services/ai";
 import { rewriteDiagnosisForChenTeacher } from "@/lib/services/tone-chen";
 import type { DiagnosisPayload, ReviewStatus } from "@/lib/types";
@@ -39,6 +40,7 @@ function mapActionToStatus(action: string): ReviewStatus {
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   ensureProductSchema();
+  ensureP25Schema();
   const { id } = await params;
   const body = (await request.json()) as { action?: string; payloadText?: string; reviewNotes?: string };
 
@@ -112,10 +114,18 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     });
   }
 
-  const weeklyReport = await generateWeeklyReport(context.student_id);
-  const weeklyReportId = upsertWeeklyReport(context.student_id, weeklyReport);
+  const weeklyBase = await generateWeeklyReport(context.student_id);
+  const weekly = decorateWeeklyPayload(context.student_id, weeklyBase, "instant");
+  const weeklyReportId = upsertWeeklyReport(context.student_id, weekly.payload);
+  persistWeeklyReportArtifacts({
+    reportId: weeklyReportId,
+    mode: "instant",
+    studentReportJson: weekly.studentReportJson,
+    continueTrackingRecommended: weekly.continueTrackingRecommended,
+    batchGeneratedAt: null
+  });
   attachWeeklyReportToRecheckTasks(context.student_id, weeklyReportId);
   upsertStudentMemorySummary(context.student_id);
 
-  return NextResponse.json({ ok: true, reviewDiff, recheckTaskId: recheck.task?.id ?? null });
+  return NextResponse.json({ ok: true, reviewDiff, recheckTaskId: recheck.task?.id ?? null, weeklyReportId });
 }

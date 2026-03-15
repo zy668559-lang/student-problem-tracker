@@ -23,6 +23,15 @@ export default async function WeeklyReportPage({ params }: { params: Promise<{ i
       </section>
 
       <div className="grid gap-6 lg:grid-cols-2">
+        <SectionCard title="家长版周总结" subtitle="一眼先看问题、动作、变化">
+          <p className="text-base leading-8 text-ink">{report.payload.parent_weekly_summary ?? "这周先看问题有没有往下掉、动作有没有真的执行。"}</p>
+        </SectionCard>
+        <SectionCard title="学生版周总结" subtitle="学生只留一个清楚的执行方向">
+          <p className="text-base leading-8 text-ink">{report.payload.student_weekly_summary ?? "这周先别贪多，把最关键的一步做顺。"}</p>
+        </SectionCard>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
         <SectionCard title="本周主要问题" subtitle="this_week_problem">
           <div className="flex flex-wrap gap-3">
             {report.payload.this_week_problem.map((item) => (
@@ -40,14 +49,14 @@ export default async function WeeklyReportPage({ params }: { params: Promise<{ i
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <SectionCard title="已稳住项" subtitle="improved_points">
+        <SectionCard title="本周稳住项" subtitle="improved_points">
           <ul className="space-y-3 text-sm leading-6 text-slate">
             {report.payload.improved_points.map((item) => (
               <li key={item} className="rounded-2xl border border-accent/20 bg-accent/10 px-4 py-3 text-ink">{item}</li>
             ))}
           </ul>
         </SectionCard>
-        <SectionCard title="未稳住项" subtitle="unstable_points">
+        <SectionCard title="本周未稳项" subtitle="unstable_points">
           <ul className="space-y-3 text-sm leading-6 text-slate">
             {report.payload.unstable_points.map((item) => (
               <li key={item} className="rounded-2xl border border-line px-4 py-3">{item}</li>
@@ -64,7 +73,7 @@ export default async function WeeklyReportPage({ params }: { params: Promise<{ i
             ))}
           </div>
         </SectionCard>
-        <SectionCard title="下周计划" subtitle="next_week_plan">
+        <SectionCard title="下周优先项" subtitle="next_week_plan">
           <ul className="space-y-3 text-sm leading-6 text-slate">
             {report.payload.next_week_plan.map((item) => (
               <li key={item} className="rounded-2xl bg-ink px-4 py-3 text-white">{item}</li>
@@ -80,22 +89,26 @@ export default async function WeeklyReportPage({ params }: { params: Promise<{ i
         <SectionCard title="下轮优先级" subtitle="next_priority">
           <p className="text-base leading-8 text-ink">{report.payload.next_priority ?? "下一轮先盯最新主卡点。"}</p>
         </SectionCard>
-        <SectionCard title="继续追踪理由" subtitle="continue_tracking_reason">
-          <p className="text-base leading-8 text-ink">{report.payload.continue_tracking_reason ?? "因为很多问题不是不会，是刚有进步但还没稳。"}</p>
+        <SectionCard title="是否建议继续追踪" subtitle="continue_tracking_label">
+          <p className="text-base leading-8 text-ink">{report.payload.continue_tracking_label ?? (report.payload.continue_tracking_recommended ? "建议继续追踪" : "这周可以先轻盯")}</p>
         </SectionCard>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
+        <SectionCard title="继续追踪理由" subtitle="continue_tracking_reason">
+          <p className="text-base leading-8 text-ink">{report.payload.continue_tracking_reason ?? "因为很多问题不是不会，是刚有进步但还没稳。"}</p>
+        </SectionCard>
         <SectionCard title="今天先做哪一步" subtitle="student_today_action">
           <p className="text-base leading-8 text-ink">{report.payload.student_today_action ?? "今天先做一题最接近这次卡点的题。"}</p>
         </SectionCard>
         <SectionCard title="再练 1 个最小动作" subtitle="student_minimum_action">
           <p className="text-base leading-8 text-ink">{report.payload.student_minimum_action ?? "再练 1 个最小动作，把最容易掉链子的那一步单独做对。"}</p>
         </SectionCard>
-        <SectionCard title="做完怎么自检" subtitle="student_self_check">
-          <p className="text-base leading-8 text-ink">{report.payload.student_self_check ?? "做完回头看：这次到底是真会了，还是只是碰巧做对。"}</p>
-        </SectionCard>
       </div>
+
+      <SectionCard title="做完怎么自检" subtitle="student_self_check">
+        <p className="text-base leading-8 text-ink">{report.payload.student_self_check ?? "做完回头看：这次到底是真会了，还是只是碰巧做对。"}</p>
+      </SectionCard>
     </div>
   );
 }

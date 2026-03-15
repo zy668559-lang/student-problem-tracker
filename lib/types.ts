@@ -6,13 +6,21 @@ export type StepQuality = "none" | "partial" | "clear";
 export type StuckPointSource = "parent_selected" | "student_selected" | "ai_inferred" | "reviewer_corrected";
 export type RecheckTaskStatus = "queued" | "recheck_due" | "passed_once" | "improving" | "stabilized" | "dismissed";
 export type RecheckOutcome = "baseline" | "blocked" | "improving" | "passed";
+export type SubmissionType = "diagnosis" | "recheck";
+export type TrackingStatus = "trial" | "intent" | "active";
+export type TrackingIntentStatus = "intent_submitted" | "activated" | "closed";
+export type RecheckManualDecision = "stabilized" | "unstable" | "bombing";
 export type ResultEventName =
   | "opened_result"
   | "viewed_result_complete"
+  | "opened_recheck_task"
+  | "complete_recheck_upload"
+  | "viewed_recheck_result_complete"
   | "click_continue_tracking"
   | "click_asset"
   | "click_only_take_advice"
-  | "paid_conversion";
+  | "paid_conversion"
+  | "submit_tracking_intent";
 
 export interface DiagnosisPayload {
   current_stage: string;
@@ -38,6 +46,11 @@ export interface WeeklyReportPayload {
   student_today_action?: string;
   student_minimum_action?: string;
   student_self_check?: string;
+  parent_weekly_summary?: string;
+  student_weekly_summary?: string;
+  continue_tracking_recommended?: boolean;
+  continue_tracking_label?: string;
+  batch_summary_generated_at?: string;
 }
 
 export interface MemorySummary {
@@ -69,6 +82,7 @@ export interface TrialAccessSnapshot {
   enabledSubjects: Subject[];
   gradeOpen: boolean;
   paidTrackingEnabled?: boolean;
+  trackingStatus?: TrackingStatus;
   subjectOpenMap: Record<Subject, boolean>;
 }
 
@@ -136,6 +150,7 @@ export interface DiagnosisDetail {
   stepsText?: string | null;
   hasSteps?: boolean;
   stepQuality?: StepQuality;
+  submissionType?: SubmissionType;
   recheckTaskId?: number | null;
   recheckStatus?: RecheckTaskStatus;
   recheckOutcome?: RecheckOutcome;
@@ -253,6 +268,7 @@ export interface AdminOperationsSnapshot {
 export interface RecheckTaskDetail {
   id: number;
   studentId: number;
+  studentName?: string | null;
   diagnosisId: number | null;
   weeklyReportId: number | null;
   subject: Subject;
@@ -279,6 +295,14 @@ export interface RecheckTaskDetail {
   dueDate: string | null;
   createdAt: string;
   updatedAt: string;
+  latestDiagnosisId?: number | null;
+  latestProblemSummary?: string | null;
+  latestStudentAction?: string | null;
+  manualOverrideStatus?: RecheckManualDecision | null;
+  manualOverrideReason?: string | null;
+  manualOverridePriority?: string | null;
+  manualOverrideBy?: number | null;
+  manualOverrideAt?: string | null;
 }
 
 export interface RecheckSyncResult {
@@ -295,4 +319,57 @@ export interface RecheckSyncResult {
   studentTodayAction: string;
   studentMinimumAction: string;
   studentSelfCheck: string;
+}
+
+export interface RecheckTaskPageDetail {
+  id: number;
+  studentId: number;
+  studentName: string;
+  subject: Subject;
+  module: string;
+  tag: string;
+  status: RecheckTaskStatus;
+  lastProblemSummary: string;
+  currentGoal: string;
+  uploadHint: string;
+  compareDiagnosisId: number | null;
+  compareWeeklyReportId: number | null;
+  latestDiagnosisId: number | null;
+  nextPriority: string;
+  continueTrackingReason: string;
+  studentTodayAction: string;
+}
+
+export interface TrackingIntentDetail {
+  id: number;
+  studentId: number;
+  studentName: string;
+  parentName: string;
+  diagnosisId: number | null;
+  recheckTaskId: number | null;
+  requestedWeeks: number;
+  note: string | null;
+  status: TrackingIntentStatus;
+  source: string;
+  trackingStatus: TrackingStatus;
+  submittedAt: string | null;
+  activatedAt: string | null;
+  createdAt: string;
+}
+
+export interface TrackingClickDetail {
+  id: number;
+  studentId: number;
+  studentName: string;
+  parentName: string;
+  diagnosisId: number;
+  eventName: ResultEventName;
+  createdAt: string;
+  eventValue: string | null;
+}
+
+export interface AdminTrackingSnapshot {
+  clicks: TrackingClickDetail[];
+  intents: TrackingIntentDetail[];
+  activeStudents: TrackingIntentDetail[];
 }

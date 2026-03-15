@@ -16,10 +16,17 @@ import {
   upsertStudentMemorySummary,
   validateUploadAccess
 } from "@/lib/db/product";
+import {
+  decorateWeeklyPayload,
+  ensureP25Schema,
+  getRecheckTaskPageDetail,
+  persistWeeklyReportArtifacts,
+  recordSubmissionMeta
+} from "@/lib/db/p25";
 import { analyzeUpload, generateWeeklyReport } from "@/lib/services/ai";
 import { softenUploadError } from "@/lib/services/tone-chen";
 import { getActiveStudentId, parseSessionFromCookieHeader } from "@/lib/session";
-import type { DiagnosisMode, StepQuality, StuckPointSource, Subject, TrialAccessSnapshot } from "@/lib/types";
+import type { DiagnosisMode, StepQuality, StuckPointSource, Subject, SubmissionType, TrialAccessSnapshot } from "@/lib/types";
 
 export const runtime = "nodejs";
 
@@ -38,11 +45,14 @@ function inferDiagnosisMode(hasSteps: boolean, stuckPointChoice: string, hasHist
 
 export async function POST(request: Request) {
   ensureProductSchema();
+  ensureP25Schema();
   const formData = await request.formData();
   const file = formData.get("file");
   const subject = formData.get("subject");
   const module = formData.get("module");
   const uploadType = formData.get("uploadType");
+  const submissionType = formData.get("submissionType") === "recheck" ? "recheck" : "diagnosis" as SubmissionType;
+  const recheckTaskId = Number(formData.get("recheckTaskId") || 0) || null;
 
   if (!(file instanceof File)) {
     return NextResponse.json({ ok: false, message: softenUploadError("图片为空") }, { status: 400 });
@@ -63,6 +73,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, message: guard.message }, { status: 403 });
   }
 
+  const recheckTask = submissionType === "recheck" && recheckTaskId
+    ? getRecheckTaskPageDetail(recheckTaskId, studentId)
+    : null;
+  if (submissionType === "recheck" && recheckTaskId && !recheckTask) {
+    return NextResponse.json({ ok: false, message: "这条复检任务我这边没对上，先刷新一下页面再试。" }, { status: 404 });
+  }
+
   const uploadsDir = path.join(process.cwd(), "uploads");
   await fs.mkdir(uploadsDir, { recursive: true });
 
@@ -74,7 +91,10 @@ export async function POST(request: Request) {
 
   const scoreNote = String(formData.get("scoreNote") || "") || null;
   const note = String(formData.get("note") || "") || null;
-  const studentSelfReport = String(formData.get("studentSelfReport") || "") || null;
+  const rawStudentSelfReport = String(formData.get("studentSelfReport") || "") || null;
+  const studentSelfReport = submissionType === "recheck" && recheckTask
+    ? `复检目标：${recheckTask.tag}。${rawStudentSelfReport ?? ""}`.trim()
+    : rawStudentSelfReport;
   const stuckPointChoice = String(formData.get("stuckPointChoice") || "").trim();
   const stepsText = String(formData.get("stepsText") || "").trim();
   const hasSteps = stepsText.length > 0;
@@ -89,7 +109,7 @@ export async function POST(request: Request) {
     scoreNote,
     note,
     studentSelfReport,
-    uploadType: typeof uploadType === "string" && uploadType ? uploadType : "题图",
+    uploadType: typeof uploadType === "string" && uploadType ? uploadType : submissionType === "recheck" ? "错题回做" : "题图",
     fileName: file.name,
     filePath: `uploads/${safeName}`
   });
@@ -103,6 +123,7 @@ export async function POST(request: Request) {
     imageCount: 1,
     diagnosisMode
   });
+  recordSubmissionMeta(uploadId, { submissionType, recheckTaskId });
 
   const diagnosis = await analyzeUpload({
     studentId,
@@ -127,7 +148,7 @@ export async function POST(request: Request) {
   enrichDiagnosisRecord(diagnosisId, {
     draftDiagnosis: diagnosis,
     diagnosisMode,
-    promptVersion: "diag-v5"
+    promptVersion: submissionType === "recheck" ? "diag-recheck-v1" : "diag-v5"
   });
   createRepairTasks(diagnosisId, studentId, diagnosis.subject, diagnosis.module, diagnosis.repair_actions);
 
@@ -135,15 +156,19 @@ export async function POST(request: Request) {
     studentId,
     subject: diagnosis.subject,
     module: diagnosis.module,
-    changeType: "detected",
-    description: `这次新看出来的主卡点是：${diagnosis.problem_tags[0] ?? diagnosis.module}`,
+    changeType: submissionType === "recheck" ? "recheck_submission" : "detected",
+    description: submissionType === "recheck"
+      ? `这次是顺着复检任务继续看：${recheckTask?.tag ?? diagnosis.problem_tags[0] ?? diagnosis.module}`
+      : `这次新看出来的主卡点是：${diagnosis.problem_tags[0] ?? diagnosis.module}`,
     relatedDiagnosisId: diagnosisId,
     newIssues: diagnosis.problem_tags,
     unstableIssues: [diagnosis.current_stage],
     repeatedErrorTags: diagnosis.problem_tags.slice(0, 3),
     evidenceSummary: stuckPointChoice
       ? `孩子这次自己选了卡点：${stuckPointChoice}`
-      : "这次没选卡点自评，我先按题图和文字自动判断。"
+      : submissionType === "recheck"
+        ? "这次是复检回做，我先按题图、过程和上次问题一起判断。"
+        : "这次没选卡点自评，我先按题图和文字自动判断。"
   });
 
   const recheck = syncRecheckForDiagnosis(diagnosisId);
@@ -172,10 +197,18 @@ export async function POST(request: Request) {
     });
   }
 
-  const weeklyReport = await generateWeeklyReport(studentId);
-  const weeklyReportId = upsertWeeklyReport(studentId, weeklyReport);
+  const weeklyBase = await generateWeeklyReport(studentId);
+  const weekly = decorateWeeklyPayload(studentId, weeklyBase, "instant");
+  const weeklyReportId = upsertWeeklyReport(studentId, weekly.payload);
+  persistWeeklyReportArtifacts({
+    reportId: weeklyReportId,
+    mode: "instant",
+    studentReportJson: weekly.studentReportJson,
+    continueTrackingRecommended: weekly.continueTrackingRecommended,
+    batchGeneratedAt: null
+  });
   attachWeeklyReportToRecheckTasks(studentId, weeklyReportId);
   upsertStudentMemorySummary(studentId);
 
-  return NextResponse.json({ ok: true, diagnosisId, weeklyReportId, recheckTaskId: recheck.task?.id ?? null });
+  return NextResponse.json({ ok: true, diagnosisId, weeklyReportId, recheckTaskId: recheck.task?.id ?? null, submissionType });
 }

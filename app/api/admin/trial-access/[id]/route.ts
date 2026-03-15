@@ -18,6 +18,8 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     maxImagesPerUpload?: number;
     enabledGrades?: string[];
     enabledSubjects?: Subject[];
+    trackingStatus?: string;
+    paidTrackingEnabled?: boolean;
   };
 
   updateTrialAccessAdmin(Number(id), {
@@ -26,7 +28,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     freeTrialUsed: Math.max(0, Number(body.freeTrialUsed ?? 0)),
     maxImagesPerUpload: Math.max(1, Number(body.maxImagesPerUpload ?? 1)),
     enabledGrades: Array.isArray(body.enabledGrades) ? body.enabledGrades : [],
-    enabledSubjects: Array.isArray(body.enabledSubjects) ? body.enabledSubjects : []
+    enabledSubjects: Array.isArray(body.enabledSubjects) ? body.enabledSubjects : [],
+    trackingStatus: typeof body.trackingStatus === "string" ? body.trackingStatus : undefined,
+    paidTrackingEnabled: typeof body.paidTrackingEnabled === "boolean" ? body.paidTrackingEnabled : undefined
   });
 
   appendAdminActionLog({
@@ -35,7 +39,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     actionType: "update_trial_access",
     targetType: "trial_access",
     targetId: Number(id),
-    detail: `更新白名单：enabled=${Boolean(body.whitelistEnabled)} total=${Number(body.freeTrialTotal ?? 0)} used=${Number(body.freeTrialUsed ?? 0)} images=${Number(body.maxImagesPerUpload ?? 1)}`
+    detail: `更新白名单：enabled=${Boolean(body.whitelistEnabled)} total=${Number(body.freeTrialTotal ?? 0)} used=${Number(body.freeTrialUsed ?? 0)} images=${Number(body.maxImagesPerUpload ?? 1)} tracking=${body.trackingStatus ?? "unchanged"}`
   });
 
   return NextResponse.json({ ok: true });

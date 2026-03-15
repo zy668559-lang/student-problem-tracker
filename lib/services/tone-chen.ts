@@ -45,7 +45,10 @@ export function rewriteWeeklyReportForChenTeacher(payload: WeeklyReportPayload):
     continue_tracking_reason: payload.continue_tracking_reason ? withPrefix("继续追踪的理由：", payload.continue_tracking_reason) : undefined,
     student_today_action: payload.student_today_action ? withPrefix("今天先做：", payload.student_today_action) : undefined,
     student_minimum_action: payload.student_minimum_action ? withPrefix("再练 1 个最小动作：", payload.student_minimum_action) : undefined,
-    student_self_check: payload.student_self_check ? withPrefix("做完这样自检：", payload.student_self_check) : undefined
+    student_self_check: payload.student_self_check ? withPrefix("做完这样自检：", payload.student_self_check) : undefined,
+    parent_weekly_summary: payload.parent_weekly_summary ? withPrefix("家长版一口气看懂：", payload.parent_weekly_summary) : undefined,
+    student_weekly_summary: payload.student_weekly_summary ? withPrefix("学生版这周就这么干：", payload.student_weekly_summary) : undefined,
+    continue_tracking_label: payload.continue_tracking_label ? withPrefix("是否建议继续追踪：", payload.continue_tracking_label) : undefined
   };
 }
 

@@ -1,4 +1,4 @@
-import { getDb, getReviewQueue } from "@/lib/db";
+﻿import { getDb, getReviewQueue } from "@/lib/db";
 import { ensureProductSchema, getSkillAssets, getStudentMemorySummary } from "@/lib/db/product";
 import type {
   AdminActionLog,
@@ -12,14 +12,12 @@ import type {
 } from "@/lib/types";
 
 function parseArray(value: string | null) {
-  if (!value) {
-    return [] as string[];
-  }
+  if (!value) return [] as string[];
   try {
     const parsed = JSON.parse(value) as unknown;
     return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
   } catch {
-    return [];
+    return [] as string[];
   }
 }
 
@@ -127,7 +125,7 @@ export function listTrialAccessAdmin() {
   ensureAdminSchema();
   const db = getDb();
   const rows = db.prepare(`
-    SELECT ta.id, ta.user_id, ta.student_id, ta.phone, ta.invite_code, ta.whitelist_enabled, ta.free_trial_total, ta.free_trial_used, ta.max_images_per_upload, ta.enabled_grades, ta.enabled_subjects, u.name AS user_name, s.name AS student_name, s.grade
+    SELECT ta.id, ta.user_id, ta.student_id, ta.phone, ta.invite_code, ta.whitelist_enabled, ta.free_trial_total, ta.free_trial_used, ta.max_images_per_upload, ta.enabled_grades, ta.enabled_subjects, ta.paid_tracking_enabled, ta.tracking_status, u.name AS user_name, s.name AS student_name, s.grade
     FROM trial_access ta
     INNER JOIN users u ON u.id = ta.user_id
     INNER JOIN students s ON s.id = ta.student_id
@@ -144,6 +142,8 @@ export function listTrialAccessAdmin() {
     max_images_per_upload: number;
     enabled_grades: string;
     enabled_subjects: string;
+    paid_tracking_enabled: number;
+    tracking_status: string | null;
     user_name: string;
     student_name: string;
     grade: string | null;
@@ -169,6 +169,8 @@ export function listTrialAccessAdmin() {
       enabledGrades,
       enabledSubjects,
       gradeOpen: enabledGrades.length === 0 || enabledGrades.includes(row.grade ?? ""),
+      paidTrackingEnabled: Boolean(row.paid_tracking_enabled),
+      trackingStatus: (row.tracking_status as any) ?? (row.paid_tracking_enabled ? "active" : "trial"),
       subjectOpenMap: {
         math: enabledSubjects.includes("math"),
         english: enabledSubjects.includes("english")
@@ -184,12 +186,22 @@ export function updateTrialAccessAdmin(id: number, input: {
   maxImagesPerUpload: number;
   enabledGrades: string[];
   enabledSubjects: Subject[];
+  trackingStatus?: string;
+  paidTrackingEnabled?: boolean;
 }) {
   ensureAdminSchema();
   const db = getDb();
   db.prepare(`
     UPDATE trial_access
-    SET whitelist_enabled = ?, free_trial_total = ?, free_trial_used = ?, max_images_per_upload = ?, enabled_grades = ?, enabled_subjects = ?, updated_at = ?
+    SET whitelist_enabled = ?,
+        free_trial_total = ?,
+        free_trial_used = ?,
+        max_images_per_upload = ?,
+        enabled_grades = ?,
+        enabled_subjects = ?,
+        tracking_status = COALESCE(?, tracking_status),
+        paid_tracking_enabled = COALESCE(?, paid_tracking_enabled),
+        updated_at = ?
     WHERE id = ?
   `).run(
     input.whitelistEnabled ? 1 : 0,
@@ -198,6 +210,8 @@ export function updateTrialAccessAdmin(id: number, input: {
     input.maxImagesPerUpload,
     JSON.stringify(input.enabledGrades),
     JSON.stringify(input.enabledSubjects),
+    input.trackingStatus ?? null,
+    typeof input.paidTrackingEnabled === "boolean" ? (input.paidTrackingEnabled ? 1 : 0) : null,
     new Date().toISOString(),
     id
   );
@@ -435,4 +449,3 @@ export function getReviewAndCostSummaryText() {
 export function getStudentMemoryPreview(studentId: number) {
   return getStudentMemorySummary(studentId);
 }
-
