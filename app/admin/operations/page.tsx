@@ -5,7 +5,8 @@ import { OperationsGrowthPanel } from "@/components/admin/operations-growth-pane
 import { WeeklyBatchSchedulerPanel } from "@/components/admin/weekly-batch-scheduler-panel";
 import { SectionCard } from "@/components/section-card";
 import { getAdminOperationsSnapshot } from "@/lib/db/admin";
-import { getLeadFollowupSummary, getWeeklyBatchSchedulerSnapshot } from "@/lib/db/a4";
+import { getWeeklyBatchSchedulerSnapshot } from "@/lib/db/a4";
+import { getFollowupSummary } from "@/lib/db/followups";
 import { listTrackingSnapshotAdmin } from "@/lib/db/p25";
 import { getReviewQueue } from "@/lib/db";
 import { formatDate, reviewStatusLabel, subjectLabel } from "@/lib/utils";
@@ -15,7 +16,7 @@ export default function AdminOperationsPage() {
   const reviewQueue = getReviewQueue();
   const tracking = listTrackingSnapshotAdmin();
   const scheduler = getWeeklyBatchSchedulerSnapshot();
-  const followups = getLeadFollowupSummary();
+  const followups = getFollowupSummary();
 
   return (
     <div className="space-y-6">
@@ -55,7 +56,7 @@ export default function AdminOperationsPage() {
           <p className="text-3xl font-semibold text-ink">{followups.rejected}</p>
         </SectionCard>
         <SectionCard title="跟进台入口" subtitle="继续追踪线索表">
-          <Link href="/admin/follow-ups" className="inline-block rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white">打开跟进漏斗</Link>
+          <Link href="/admin/followups" className="inline-block rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white">打开跟进漏斗</Link>
         </SectionCard>
       </div>
 

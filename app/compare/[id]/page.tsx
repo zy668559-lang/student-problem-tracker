@@ -1,6 +1,7 @@
 ﻿export const dynamic = "force-dynamic";
 
 import Link from "next/link";
+import { ContinueTrackingLink } from "@/components/continue-tracking-link";
 import { notFound } from "next/navigation";
 import { DiagnosisResultActions } from "@/components/diagnosis-result-actions";
 import { SectionCard } from "@/components/section-card";
@@ -83,7 +84,7 @@ export default async function ComparePage({ params }: { params: Promise<{ id: st
       />
 
       <div className="flex flex-wrap gap-3">
-        <Link href={`/recheck/${detail.taskId}`} className="rounded-2xl bg-ink px-5 py-3 text-sm font-semibold text-white">继续追踪 4 周</Link>
+        <ContinueTrackingLink href={`/recheck/${detail.taskId}`} diagnosisId={detail.latestDiagnosisId ?? detail.diagnosisId} eventValue="compare-to-recheck" className="rounded-2xl bg-ink px-5 py-3 text-sm font-semibold text-white">继续追踪 4 周</ContinueTrackingLink>
         <Link href={detail.latestWeeklyReportId ? `/weekly-report/${detail.latestWeeklyReportId}` : "/dashboard"} className="rounded-2xl border border-line bg-white px-5 py-3 text-sm font-semibold text-ink">看这周周总结</Link>
         <Link href={detail.latestDiagnosisId ? `/diagnosis/${detail.latestDiagnosisId}` : "/dashboard"} className="rounded-2xl border border-line bg-white px-5 py-3 text-sm font-semibold text-ink">回看最新诊断</Link>
       </div>

@@ -23,7 +23,7 @@ const adminNavItems = [
   { href: "/admin/operations", label: "审核与成本" },
   { href: "/admin/assets", label: "素材库" },
   { href: "/admin/recheck-tasks", label: "复检任务" },
-  { href: "/admin/follow-ups", label: "跟进漏斗" }
+  { href: "/admin/followups", label: "跟进漏斗" }
 ];
 
 export function AppShell({ children, session, students }: { children: ReactNode; session: AppSession | null; students: StudentOption[] }) {

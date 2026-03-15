@@ -1,4 +1,4 @@
-﻿export type Subject = "math" | "english";
+export type Subject = "math" | "english";
 
 export type ReviewStatus = "pending" | "approved" | "rejected" | "edited";
 export type DiagnosisMode = "quick" | "standard" | "deep";
@@ -11,6 +11,15 @@ export type TrackingStatus = "trial" | "intent" | "active";
 export type TrackingIntentStatus = "intent_submitted" | "activated" | "closed";
 export type RecheckManualDecision = "stabilized" | "unstable" | "bombing";
 export type LeadFollowupStatus = "new_intent" | "contacted" | "follow_up_pending" | "activated" | "not_needed" | "rejected";
+export type FollowupActionType =
+  | "wechat_contacted"
+  | "phone_contacted"
+  | "follow_up_pending"
+  | "timeline_sent"
+  | "advice_sent"
+  | "parent_hesitating"
+  | "parent_rejected"
+  | "activated";
 export type WeeklyBatchRunStatus = "running" | "success" | "failed";
 export type ResultEventName =
   | "opened_result"
@@ -440,6 +449,78 @@ export interface LeadFollowupDetail {
   createdAt: string;
   updatedAt: string;
 }
+export interface FollowupActionDetail {
+  id: number;
+  leadId: number;
+  operatorUserId: number;
+  operatorName: string;
+  actionType: FollowupActionType;
+  note: string | null;
+  remindAt: string | null;
+  createdAt: string;
+}
+
+export interface FollowupLeadDetail {
+  id: number;
+  legacyLeadId: number | null;
+  trackingIntentId: number | null;
+  parentAccountId: number;
+  parentName: string;
+  parentEmail: string;
+  studentId: number;
+  studentCode: string;
+  studentName: string;
+  grade: string | null;
+  subject: Subject | null;
+  module: string | null;
+  sourceType: string;
+  sourceRefId: number | null;
+  latestEvidenceSummary: string;
+  latestBlockPoint: string;
+  weeklyChangeSummary: string;
+  unstableStep: string;
+  continueTrackingReason: string;
+  status: LeadFollowupStatus;
+  lastContactAt: string | null;
+  nextFollowUpAt: string | null;
+  latestActionType: FollowupActionType | null;
+  latestActionSummary: string | null;
+  followUpNote: string | null;
+  rejectionReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+  actions: FollowupActionDetail[];
+}
+
+export interface FollowupTemplate {
+  id: string;
+  title: string;
+  body: string;
+}
+
+export interface FollowupReminderBucket {
+  title: string;
+  count: number;
+  items: FollowupLeadDetail[];
+}
+
+export interface FollowupBoardSnapshot {
+  total: number;
+  newIntent: number;
+  contacted: number;
+  followUpPending: number;
+  activated: number;
+  rejected: number;
+  items: FollowupLeadDetail[];
+  columns: Record<LeadFollowupStatus, FollowupLeadDetail[]>;
+  reminders: {
+    today: FollowupReminderBucket;
+    tomorrow: FollowupReminderBucket;
+    overdue: FollowupReminderBucket;
+  };
+  templates: FollowupTemplate[];
+}
+
 export interface EvidenceTimelineNode {
   id: string;
   entityId: number | null;

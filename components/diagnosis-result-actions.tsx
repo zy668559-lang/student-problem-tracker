@@ -2,13 +2,15 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { ContinueTrackingLink } from "@/components/continue-tracking-link";
 import type { ResultEventName, SubmissionType, TrackingStatus } from "@/lib/types";
 
 async function postResultEvent(payload: { diagnosisId: number; eventName: ResultEventName; assetId?: number | null; eventValue?: string | null }) {
   await fetch("/api/result-events", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
+    keepalive: true
   }).catch(() => undefined);
 }
 
@@ -67,7 +69,7 @@ export function DiagnosisResultActions({
         <h3 className="mt-3 text-2xl font-semibold text-ink">继续追踪，还是先拿建议</h3>
         <p className="mt-3 text-sm leading-7 text-slate">如果你要继续看变化，下一轮直接走复检入口最省力；如果今天只想先拿建议，也完全可以先停在这。</p>
         <div className="mt-5 flex flex-wrap gap-3">
-          <Link href={recheckHref} onClick={() => postResultEvent({ diagnosisId, eventName: "click_continue_tracking", eventValue: submissionType === "recheck" ? "recheck-to-recheck" : "diagnosis-to-recheck" })} className="rounded-2xl bg-ink px-5 py-3 text-sm font-semibold text-white">继续追踪</Link>
+          <ContinueTrackingLink href={recheckHref} diagnosisId={diagnosisId} eventValue={submissionType === "recheck" ? "recheck-to-recheck" : "diagnosis-to-recheck"} className="rounded-2xl bg-ink px-5 py-3 text-sm font-semibold text-white">继续追踪</ContinueTrackingLink>
           <Link href="/dashboard" onClick={() => postResultEvent({ diagnosisId, eventName: "click_only_take_advice" })} className="rounded-2xl border border-line bg-white px-5 py-3 text-sm font-semibold text-ink">只拿建议</Link>
         </div>
       </div>
