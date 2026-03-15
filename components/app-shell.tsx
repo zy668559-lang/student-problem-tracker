@@ -12,7 +12,8 @@ const parentNavItems = [
   { href: "/upload", label: "上传" },
   { href: "/subject/math", label: "数学模块" },
   { href: "/subject/english", label: "英语模块" },
-  { href: "/review-queue", label: "审核台" }
+  { href: "/review-queue", label: "审核台" },
+  { href: "/timeline", label: "证据时间轴" }
 ];
 
 const adminNavItems = [
@@ -110,5 +111,6 @@ export function AppShell({ children, session, students }: { children: ReactNode;
     </div>
   );
 }
+
 
 

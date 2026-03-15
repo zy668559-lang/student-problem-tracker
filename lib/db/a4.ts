@@ -1,13 +1,16 @@
 ﻿import { getDb, getLatestWeeklyReport, getPrimaryStudentId } from "@/lib/db";
 import { appendAdminActionLog, ensureAdminSchema } from "@/lib/db/admin";
 import { ensureP25Schema, runWeeklyBatchForAllStudents } from "@/lib/db/p25";
-import { getRecommendedSkillAssetByDiagnosis } from "@/lib/db/product";
+import { getRecommendedSkillAssetByDiagnosis, getStudentMemorySummary } from "@/lib/db/product";
 import { listStudentRecheckTasks } from "@/lib/db/recheck";
 import type {
   AppSession,
+  EvidenceTimelineDetail,
+  EvidenceTimelineNode,
   LeadFollowupDetail,
   LeadFollowupStatus,
   ResultCompareDetail,
+  ResultEventName,
   WeeklyBatchRunDetail,
   WeeklyBatchRunStatus,
   WeeklyBatchSchedulerSnapshot
@@ -32,6 +35,14 @@ function parseArray(value: string | null) {
   }
 }
 
+function parseObject<T>(value: string | null, fallback: T): T {
+  if (!value) return fallback;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
+}
 function unique(items: Array<string | null | undefined>, limit = 4) {
   return Array.from(new Set(items.map((item) => (item ?? "").trim()).filter(Boolean))).slice(0, limit);
 }
@@ -513,3 +524,243 @@ export function getResultCompareTaskIdForStudent(studentId = getPrimaryStudentId
   const tasks = listStudentRecheckTasks(studentId).filter((item) => item.status !== "dismissed");
   return tasks[0]?.id ?? null;
 }
+function resultEventLabel(eventName: ResultEventName) {
+  switch (eventName) {
+    case "click_continue_tracking":
+      return "家长点了继续追踪";
+    case "submit_tracking_intent":
+      return "家长把继续追踪意向递上来了";
+    case "click_asset":
+      return "家长先去看推荐素材了";
+    case "viewed_recheck_result_complete":
+      return "家长把复检结果看完了";
+    case "opened_recheck_task":
+      return "家长打开了复检任务页";
+    default:
+      return "家长回看了一次结果页";
+  }
+}
+
+function toTimelineNodes(studentId: number): EvidenceTimelineNode[] {
+  const db = getDb();
+
+  const diagnosisRows = db.prepare(`
+    SELECT d.id, d.current_stage, d.repair_actions, d.parent_summary, d.recheck_summary, d.next_priority, d.continue_tracking_reason,
+           d.created_at, u.upload_type, u.file_name, u.student_self_report, u.note, u.submission_type
+    FROM diagnoses d
+    INNER JOIN uploads u ON u.id = d.upload_id
+    WHERE u.student_id = ?
+    ORDER BY d.created_at DESC, d.id DESC
+    LIMIT 6
+  `).all(studentId) as Array<any>;
+
+  const weeklyRows = db.prepare(`
+    SELECT id, week_label, report_json, created_at
+    FROM weekly_reports
+    WHERE student_id = ?
+    ORDER BY created_at DESC, id DESC
+    LIMIT 3
+  `).all(studentId) as Array<any>;
+
+  const changeRows = db.prepare(`
+    SELECT id, change_type, description, next_priority, next_action_type, next_recheck_reason, created_at
+    FROM change_logs
+    WHERE student_id = ?
+    ORDER BY created_at DESC, id DESC
+    LIMIT 6
+  `).all(studentId) as Array<any>;
+
+  const taskRows = db.prepare(`
+    SELECT id, tag, status, trigger_reason, next_action_type, continue_tracking_reason, next_priority, updated_at
+    FROM recheck_tasks
+    WHERE student_id = ? AND status != 'dismissed'
+    ORDER BY updated_at DESC, id DESC
+    LIMIT 4
+  `).all(studentId) as Array<any>;
+
+  const eventRows = db.prepare(`
+    SELECT id, diagnosis_id, event_name, event_value, created_at
+    FROM result_page_events
+    WHERE student_id = ?
+    ORDER BY created_at DESC, id DESC
+    LIMIT 6
+  `).all(studentId) as Array<any>;
+
+  const memory = getStudentMemorySummary(studentId);
+
+  const diagnosisNodes: EvidenceTimelineNode[] = diagnosisRows.map((row) => {
+    const actions = parseArray(row.repair_actions);
+    return {
+      id: `diagnosis-${row.id}`,
+      entityId: row.id,
+      kind: "diagnosis",
+      title: row.submission_type === "recheck" ? "这次复检交上来了" : "这次体检交上来了",
+      subtitle: `${row.upload_type ?? "题图"} · ${row.file_name}`,
+      createdAt: row.created_at,
+      problem: row.current_stage ?? row.student_self_report ?? "这次主要卡点还在整理。",
+      action: actions[0] ?? row.note ?? "这次先给了一个最小动作。",
+      result: row.recheck_summary ?? row.parent_summary ?? "这次先把结果记进档案了。",
+      nextImpact: row.next_priority ?? row.continue_tracking_reason ?? "下一轮还会顺着这条线继续看。",
+      href: `/diagnosis/${row.id}`
+    };
+  });
+
+  const weeklyNodes: EvidenceTimelineNode[] = weeklyRows.map((row) => {
+    const payload = parseObject<any>(row.report_json, {
+      this_week_problem: [],
+      this_week_actions: [],
+      improved_points: [],
+      unstable_points: [],
+      repeated_error_tags: [],
+      next_week_plan: [],
+      student_today_action: null,
+      parent_weekly_summary: null,
+      recheck_status: null,
+      next_priority: null,
+      continue_tracking_reason: null
+    });
+    return {
+      id: `weekly-${row.id}`,
+      entityId: row.id,
+      kind: "weekly_report",
+      title: `这周周总结出来了` ,
+      subtitle: row.week_label,
+      createdAt: row.created_at,
+      problem: payload.this_week_problem?.[0] ?? "这周主要问题我先做了归拢。",
+      action: payload.this_week_actions?.[0] ?? payload.student_today_action ?? "这周先按最小动作推进。",
+      result: payload.parent_weekly_summary ?? payload.recheck_status ?? "这周变化已经沉到周报里。",
+      nextImpact: payload.next_priority ?? payload.continue_tracking_reason ?? payload.next_week_plan?.[0] ?? "下周继续顺着这条线看。",
+      href: `/weekly-report/${row.id}`
+    };
+  });
+
+  const changeNodes: EvidenceTimelineNode[] = changeRows.map((row) => ({
+    id: `change-${row.id}`,
+    entityId: row.id,
+    kind: "change_log",
+    title: "这次变化我已经记下来了",
+    subtitle: row.change_type,
+    createdAt: row.created_at,
+    problem: row.description,
+    action: row.next_action_type ?? row.next_recheck_reason ?? "先按这次变化继续跟。",
+    result: row.description,
+    nextImpact: row.next_priority ?? "下一轮会拿这条变化继续回看。",
+    href: null
+  }));
+
+  const taskNodes: EvidenceTimelineNode[] = taskRows.map((row) => ({
+    id: `recheck-${row.id}`,
+    entityId: row.id,
+    kind: "recheck_task",
+    title: row.status === "stabilized" ? "这条复检先记成已稳住" : row.status === "passed_once" ? "这条有进步，但还没稳" : "这条复检继续挂着看",
+    subtitle: row.tag,
+    createdAt: row.updated_at,
+    problem: row.trigger_reason ?? `这轮主要还是盯 ${row.tag}`,
+    action: row.next_action_type ?? "再做一轮同类题。",
+    result: row.continue_tracking_reason ?? "这条复检状态已经同步更新。",
+    nextImpact: row.next_priority ?? "下一轮继续顺着这条线往下看。",
+    href: `/recheck/${row.id}`
+  }));
+
+  const eventNodes: EvidenceTimelineNode[] = eventRows.map((row) => ({
+    id: `event-${row.id}`,
+    entityId: row.id,
+    kind: "result_event",
+    title: resultEventLabel(row.event_name as ResultEventName),
+    subtitle: row.event_name,
+    createdAt: row.created_at,
+    problem: "这一步能看出家长当时最在意的是不是要继续往下追。",
+    action: row.event_value ?? "这次没补额外备注。",
+    result: resultEventLabel(row.event_name as ResultEventName),
+    nextImpact: row.event_name === "submit_tracking_intent" ? "这条已经进了继续追踪漏斗。" : "这能帮我判断家长这周是不是已经愿意继续跟。",
+    href: row.diagnosis_id ? `/diagnosis/${row.diagnosis_id}` : null
+  }));
+
+  const memoryNode: EvidenceTimelineNode = {
+    id: `memory-${studentId}`,
+    entityId: studentId,
+    kind: "memory",
+    title: "当前记忆摘要",
+    subtitle: "这是我现在给这位孩子留的长期记忆",
+    createdAt: memory.updated_at,
+    problem: memory.repeated_error_tags[0] ?? "当前重复错因还在继续观察。",
+    action: memory.next_action_type || "下一轮先按最小动作继续做。",
+    result: memory.last_best_improvement || "这轮先把最近变化记住了。",
+    nextImpact: memory.next_priority,
+    href: null
+  };
+
+  return [...diagnosisNodes, ...weeklyNodes, ...changeNodes, ...taskNodes, ...eventNodes, memoryNode]
+    .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
+    .slice(0, 14);
+}
+
+export function getEvidenceTimelineDetail(studentId = getPrimaryStudentId()): EvidenceTimelineDetail | null {
+  ensureA4Schema();
+  const db = getDb();
+  const student = db.prepare(`SELECT id, name FROM students WHERE id = ? LIMIT 1`).get(studentId) as { id: number; name: string } | undefined;
+  if (!student) return null;
+
+  const latestDiagnosis = db.prepare(`
+    SELECT d.id, d.current_stage, d.recheck_summary, d.next_priority, d.continue_tracking_reason, d.problem_tags, d.recheck_task_id, d.created_at
+    FROM diagnoses d
+    INNER JOIN uploads u ON u.id = d.upload_id
+    WHERE u.student_id = ?
+    ORDER BY d.created_at DESC, d.id DESC
+    LIMIT 1
+  `).get(studentId) as any;
+
+  const latestWeekly = db.prepare(`
+    SELECT id, report_json, created_at
+    FROM weekly_reports
+    WHERE student_id = ?
+    ORDER BY created_at DESC, id DESC
+    LIMIT 1
+  `).get(studentId) as any;
+
+  const latestChange = db.prepare(`
+    SELECT id, description, created_at
+    FROM change_logs
+    WHERE student_id = ?
+    ORDER BY created_at DESC, id DESC
+    LIMIT 1
+  `).get(studentId) as any;
+
+  const latestEvents = db.prepare(`
+    SELECT event_name, event_value
+    FROM result_page_events
+    WHERE student_id = ?
+    ORDER BY created_at DESC, id DESC
+    LIMIT 4
+  `).all(studentId) as Array<{ event_name: ResultEventName; event_value: string | null }>;
+
+  const memory = getStudentMemorySummary(studentId);
+  const weeklyPayload = parseObject(latestWeekly?.report_json ?? null, {
+    improved_points: [],
+    unstable_points: [],
+    next_priority: null,
+    continue_tracking_reason: null,
+    parent_weekly_summary: null,
+    repeated_error_tags: [],
+    next_week_plan: []
+  } as any);
+  const activeTaskId = latestDiagnosis?.recheck_task_id ?? getResultCompareTaskIdForStudent(studentId);
+
+  return {
+    studentId: student.id,
+    studentName: student.name,
+    lastProblemSummary: latestDiagnosis?.current_stage ?? weeklyPayload.this_week_problem?.[0] ?? memory.repeated_error_tags[0] ?? "上次主要问题我还在等新材料。",
+    currentChangeSummary: latestChange?.description ?? weeklyPayload.parent_weekly_summary ?? memory.last_best_improvement ?? "这轮变化我还在继续攒证据。",
+    stabilizedItems: unique([...(weeklyPayload.improved_points ?? []), ...memory.stable_tags], 4),
+    unstableItems: unique([...(weeklyPayload.unstable_points ?? []), ...memory.repeated_error_tags], 4),
+    nextPriority: latestDiagnosis?.next_priority ?? weeklyPayload.next_priority ?? memory.next_priority,
+    continueTrackingReason: latestDiagnosis?.continue_tracking_reason ?? weeklyPayload.continue_tracking_reason ?? memory.next_recheck_reason,
+    latestDiagnosisId: latestDiagnosis?.id ?? null,
+    latestWeeklyReportId: latestWeekly?.id ?? null,
+    priorityRecheckTaskId: activeTaskId ?? null,
+    recentEventSummary: latestEvents.map((item) => item.event_value ? `${resultEventLabel(item.event_name)}：${item.event_value}` : resultEventLabel(item.event_name)),
+    nodes: toTimelineNodes(studentId)
+  };
+}
+
+

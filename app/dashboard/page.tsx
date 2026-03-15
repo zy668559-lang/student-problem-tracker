@@ -119,7 +119,7 @@ export default async function DashboardPage() {
       </div>
 
       <SectionCard title="快速入口" subtitle="直接进入上传、诊断、周总结和复检页。">
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           <Link href="/upload" className="rounded-3xl bg-ink px-5 py-5 text-white">
             <p className="text-lg font-semibold">继续上传</p>
             <p className="mt-2 text-sm text-white/70">新增错题、作业或试卷图片</p>
@@ -136,8 +136,13 @@ export default async function DashboardPage() {
             <p className="text-lg font-semibold text-ink">查看周总结</p>
             <p className="mt-2 text-sm text-slate">聚合一周变化、未稳项和下周计划</p>
           </Link>
+          <Link href="/timeline" className="rounded-3xl border border-line bg-white px-5 py-5">
+            <p className="text-lg font-semibold text-ink">证据时间轴</p>
+            <p className="mt-2 text-sm text-slate">把上周到这周的诊断、复检、周报和变化串起来看</p>
+          </Link>
         </div>
       </SectionCard>
     </div>
   );
 }
+

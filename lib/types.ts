@@ -440,5 +440,33 @@ export interface LeadFollowupDetail {
   createdAt: string;
   updatedAt: string;
 }
+export interface EvidenceTimelineNode {
+  id: string;
+  entityId: number | null;
+  kind: "upload" | "diagnosis" | "recheck_task" | "weekly_report" | "change_log" | "result_event" | "memory";
+  title: string;
+  subtitle: string;
+  createdAt: string;
+  problem: string;
+  action: string;
+  result: string;
+  nextImpact: string;
+  href: string | null;
+}
 
+export interface EvidenceTimelineDetail {
+  studentId: number;
+  studentName: string;
+  lastProblemSummary: string;
+  currentChangeSummary: string;
+  stabilizedItems: string[];
+  unstableItems: string[];
+  nextPriority: string;
+  continueTrackingReason: string;
+  latestDiagnosisId: number | null;
+  latestWeeklyReportId: number | null;
+  priorityRecheckTaskId: number | null;
+  recentEventSummary: string[];
+  nodes: EvidenceTimelineNode[];
+}
 
