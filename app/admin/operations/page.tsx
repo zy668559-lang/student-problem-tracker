@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { OperationsGrowthPanel } from "@/components/admin/operations-growth-panel";
+import { WeeklyBatchSchedulerPanel } from "@/components/admin/weekly-batch-scheduler-panel";
 import { SectionCard } from "@/components/section-card";
 import { getAdminOperationsSnapshot } from "@/lib/db/admin";
+import { getLeadFollowupSummary, getWeeklyBatchSchedulerSnapshot } from "@/lib/db/a4";
 import { listTrackingSnapshotAdmin } from "@/lib/db/p25";
 import { getReviewQueue } from "@/lib/db";
 import { formatDate, reviewStatusLabel, subjectLabel } from "@/lib/utils";
@@ -12,13 +14,15 @@ export default function AdminOperationsPage() {
   const operations = getAdminOperationsSnapshot();
   const reviewQueue = getReviewQueue();
   const tracking = listTrackingSnapshotAdmin();
+  const scheduler = getWeeklyBatchSchedulerSnapshot();
+  const followups = getLeadFollowupSummary();
 
   return (
     <div className="space-y-6">
       <section className="rounded-panel border border-white/70 bg-white/90 p-6 shadow-panel sm:p-8">
         <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent/70">Operations</p>
         <h1 className="mt-3 text-3xl font-semibold text-ink">审核、成本与继续追踪</h1>
-        <p className="mt-3 max-w-3xl text-sm leading-7 text-slate">这里把审核队列、模型调用、失败记录、估算成本、周报批处理和继续追踪转化都放一起。运营看这一页，就知道质量、成本和成交承接有没有同时站住。</p>
+        <p className="mt-3 max-w-3xl text-sm leading-7 text-slate">这里把审核队列、模型调用、失败记录、周报调度和继续追踪承接放一起。运营看这一页，就知道质量、成本和线索有没有一起站住。</p>
       </section>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -31,8 +35,27 @@ export default function AdminOperationsPage() {
         <SectionCard title="估算成本" subtitle="累计估算">
           <p className="text-4xl font-semibold text-ink">¥ {operations.estimatedCost.toFixed(2)}</p>
         </SectionCard>
-        <SectionCard title="平均耗时" subtitle="毫秒">
-          <p className="text-4xl font-semibold text-ink">{operations.averageLatencyMs}</p>
+        <SectionCard title="新意向" subtitle="lead followups">
+          <p className="text-4xl font-semibold text-ink">{followups.newIntent}</p>
+        </SectionCard>
+      </div>
+
+      <SectionCard title="周报调度状态" subtitle="自动跑 + 手动补跑都从这里看">
+        <WeeklyBatchSchedulerPanel snapshot={scheduler} />
+      </SectionCard>
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <SectionCard title="已联系" subtitle="跟进中">
+          <p className="text-3xl font-semibold text-ink">{followups.contacted + followups.followUpPending}</p>
+        </SectionCard>
+        <SectionCard title="已开通" subtitle="4 周追踪">
+          <p className="text-3xl font-semibold text-ink">{followups.activated}</p>
+        </SectionCard>
+        <SectionCard title="暂不需要 / 拒绝" subtitle="先不转化">
+          <p className="text-3xl font-semibold text-ink">{followups.rejected}</p>
+        </SectionCard>
+        <SectionCard title="跟进台入口" subtitle="继续追踪线索表">
+          <Link href="/admin/follow-ups" className="inline-block rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white">打开跟进漏斗</Link>
         </SectionCard>
       </div>
 

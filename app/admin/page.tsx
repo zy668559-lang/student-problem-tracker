@@ -8,7 +8,8 @@ const cards = [
   { href: "/admin/students", title: "学生列表", detail: "把孩子档案、最近上传、最近诊断和记忆标签摆在一起看。" },
   { href: "/admin/operations", title: "审核、成本与继续追踪", detail: "把 review queue、模型调用、周报批处理和继续追踪意向放在一处。" },
   { href: "/admin/assets", title: "素材库管理", detail: "按标签维护 skill assets，控制付费可见开关。" },
-  { href: "/admin/recheck-tasks", title: "复检任务台", detail: "老师能直接把复检任务纠偏，改成已稳住、未稳住或继续轰炸。" }
+  { href: "/admin/recheck-tasks", title: "复检任务台", detail: "老师能直接把复检任务纠偏，改成已稳住、未稳住或继续轰炸。" },
+  { href: "/admin/follow-ups", title: "跟进漏斗", detail: "把新意向、已联系、待回访、已开通和拒绝都按学生挂起来看。" }
 ];
 
 export default function AdminOverviewPage() {

@@ -10,12 +10,15 @@ export type SubmissionType = "diagnosis" | "recheck";
 export type TrackingStatus = "trial" | "intent" | "active";
 export type TrackingIntentStatus = "intent_submitted" | "activated" | "closed";
 export type RecheckManualDecision = "stabilized" | "unstable" | "bombing";
+export type LeadFollowupStatus = "new_intent" | "contacted" | "follow_up_pending" | "activated" | "not_needed" | "rejected";
+export type WeeklyBatchRunStatus = "running" | "success" | "failed";
 export type ResultEventName =
   | "opened_result"
   | "viewed_result_complete"
   | "opened_recheck_task"
   | "complete_recheck_upload"
   | "viewed_recheck_result_complete"
+  | "opened_compare_page"
   | "click_continue_tracking"
   | "click_asset"
   | "click_only_take_advice"
@@ -373,3 +376,69 @@ export interface AdminTrackingSnapshot {
   intents: TrackingIntentDetail[];
   activeStudents: TrackingIntentDetail[];
 }
+export interface ResultCompareDetail {
+  taskId: number;
+  studentId: number;
+  studentName: string;
+  diagnosisId: number | null;
+  latestDiagnosisId: number | null;
+  latestWeeklyReportId: number | null;
+  lastProblemSummary: string;
+  currentRecheckResult: string;
+  stabilizedItems: string[];
+  unstableItems: string[];
+  nextPriority: string;
+  continueTrackingReason: string;
+  suggestedAssetTitle: string | null;
+  suggestedAssetSummary: string | null;
+  suggestedAssetId: number | null;
+  suggestedAssetPaidOnly: boolean;
+  compareReady: boolean;
+}
+
+export interface WeeklyBatchRunDetail {
+  id: number;
+  jobName: string;
+  triggerSource: string;
+  triggeredBy: number | null;
+  triggeredByName: string | null;
+  status: WeeklyBatchRunStatus;
+  reportCount: number;
+  errorMessage: string | null;
+  startedAt: string;
+  finishedAt: string | null;
+  createdAt: string;
+}
+
+export interface WeeklyBatchSchedulerSnapshot {
+  jobName: string;
+  intervalMinutes: number;
+  nextRunAt: string;
+  lastRunAt: string | null;
+  lastStatus: WeeklyBatchRunStatus | null;
+  lastError: string | null;
+  lastReportCount: number;
+  updatedAt: string;
+  recentRuns: WeeklyBatchRunDetail[];
+}
+
+export interface LeadFollowupDetail {
+  id: number;
+  trackingIntentId: number | null;
+  userId: number;
+  userName: string;
+  studentId: number;
+  studentName: string;
+  diagnosisId: number | null;
+  recheckTaskId: number | null;
+  clickSource: string;
+  status: LeadFollowupStatus;
+  intentAt: string;
+  lastContactAt: string | null;
+  followUpNote: string | null;
+  rejectionReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+

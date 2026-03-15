@@ -123,11 +123,30 @@ function getTaskWeight(task: RecheckTaskDetail) {
           : task.status === "queued"
             ? 20
             : 0;
-  return statusWeight + task.repeatCount7d * 4 + task.repeatCount30d * 2 + (task.paidTrackingEnabled ? 2 : 0);
+  const updatedHours = Math.max(0, (Date.now() - new Date(task.updatedAt).getTime()) / (1000 * 60 * 60));
+  const freshnessWeight = Math.max(0, 48 - updatedHours) * 0.8;
+  const repeatWeight = Math.min(task.repeatCount7d, 4) * 4 + Math.min(task.repeatCount30d, 6) * 2;
+  const manualWeight = task.manualOverrideAt ? 18 : 0;
+  return statusWeight + repeatWeight + freshnessWeight + manualWeight + (task.paidTrackingEnabled ? 2 : 0);
 }
 
 function getPriorityTask(studentId: number) {
   const tasks = listStudentRecheckTasks(studentId).filter((task) => task.status !== "dismissed");
+  const db = getDb();
+  const latestRow = db.prepare(`
+    SELECT d.recheck_task_id
+    FROM diagnoses d
+    INNER JOIN uploads u ON u.id = d.upload_id
+    WHERE u.student_id = ? AND d.recheck_task_id IS NOT NULL
+    ORDER BY d.created_at DESC, d.id DESC
+    LIMIT 1
+  `).get(studentId) as { recheck_task_id: number | null } | undefined;
+  if (latestRow?.recheck_task_id) {
+    const latestTask = tasks.find((task) => task.id === latestRow.recheck_task_id);
+    if (latestTask) {
+      return latestTask;
+    }
+  }
   return [...tasks].sort((left, right) => getTaskWeight(right) - getTaskWeight(left))[0] ?? null;
 }
 
@@ -707,3 +726,5 @@ export function activateTrackingIntent(intentId: number, adminSession: AppSessio
     detail: `标记学生 ${intent.student_id} 已开通 4 周追踪`
   });
 }
+
+

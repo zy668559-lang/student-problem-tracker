@@ -52,7 +52,7 @@ async function createDiagnosis(page: Page, tag: string) {
   await page.locator('select[name="subject"]').selectOption("math");
   await page.locator('select[name="module"]').selectOption("函数");
   await page.locator('input[name="scoreNote"]').fill("72 / 100");
-  await page.locator('input[name="note"]').fill("productized recheck flow");
+  await page.locator('input[name="note"]').fill("a4 evidence layer flow");
   await page.locator('textarea[name="studentSelfReport"]').fill(tag);
   const uploadResponse = page.waitForResponse((response) => response.url().includes("/api/uploads") && response.request().method() === "POST");
   await page.locator('button[type="submit"]').click();
@@ -63,28 +63,31 @@ async function createDiagnosis(page: Page, tag: string) {
   return payload;
 }
 
-test("recheck page submits separate recheck upload and shows compare entry", async ({ page }, testInfo) => {
+test("recheck upload lands on dedicated compare page with parent-friendly summary", async ({ page }, testInfo) => {
   test.setTimeout(420_000);
-  const tag = `Playwright-Recheck-Page-${Date.now()}`;
+  const tag = `Playwright-Compare-${Date.now()}`;
 
   await resetStudentQuota(page);
   const first = await createDiagnosis(page, tag);
   expect(first.recheckTaskId).toBeTruthy();
 
-  await expect(page.locator("main")).toContainText("进入复检任务页", { timeout: 30_000 });
   await page.getByRole("link", { name: "进入复检任务页" }).click();
   await expect(page).toHaveURL(new RegExp(`/recheck/${first.recheckTaskId}$`), { timeout: 30_000 });
-  await expect(page.locator("main")).toContainText("上次问题摘要");
-  await expect(page.locator("main")).toContainText("结果对比入口");
-  await page.screenshot({ path: testInfo.outputPath("01-recheck-task-page.png"), fullPage: true });
+  await expect(page.locator("main")).toContainText("打开结果对比页");
 
   await page.locator('input[type="file"]').setInputFiles(fixturePath);
   await page.locator('input[name="scoreNote"]').fill("95 / 100");
   await page.locator('textarea[name="studentSelfReport"]').fill(`${tag} 这次比上次顺多了`);
   await page.locator('button[type="submit"]').click();
   await expect(page).toHaveURL(/\/diagnosis\/\d+$/, { timeout: 180_000 });
-  await expect(page.locator("main")).toContainText("复检结果", { timeout: 30_000 });
-  await expect(page.locator("main")).toContainText("进入复检任务页", { timeout: 30_000 });
+  await page.getByRole("link", { name: "看结果对比页" }).click();
+  await expect(page).toHaveURL(new RegExp(`/compare/${first.recheckTaskId}$`), { timeout: 30_000 });
+  await expect(page.locator("main")).toContainText("上次主要问题");
+  await expect(page.locator("main")).toContainText("本次复检结果");
+  await expect(page.locator("main")).toContainText("下轮优先级");
+  await expect(page.locator("main")).toContainText("建议继续追踪理由");
+  await expect(page.locator("main")).toContainText("继续追踪 4 周");
+  await page.screenshot({ path: testInfo.outputPath("01-compare-page.png"), fullPage: true });
 });
 
 test("manual recheck correction writes back priority and weekly report", async ({ page }, testInfo) => {
@@ -108,7 +111,7 @@ test("manual recheck correction writes back priority and weekly report", async (
 
   await login(page, "parent@example.com");
   await page.goto("/dashboard");
-  await expect(page.locator("main")).toContainText("下轮先继续轰炸这条，不要换线。", { timeout: 30_000 });
+  await expect(page.locator("main")).toContainText(/继续轰炸|还没站住/, { timeout: 30_000 });
   await expect(page.locator("main")).toContainText(/复检状态|继续轰炸/, { timeout: 30_000 });
 
   const weeklyHref = await page.locator('a[href^="/weekly-report/"]').last().getAttribute("href");
@@ -118,29 +121,40 @@ test("manual recheck correction writes back priority and weekly report", async (
   await expect(page.locator("main")).toContainText("下轮先继续轰炸这条，不要换线。", { timeout: 30_000 });
 });
 
-test("weekly batch and tracking intent are visible in admin operations", async ({ page }, testInfo) => {
+test("weekly scheduler and follow-up funnel are visible and editable in admin", async ({ page }, testInfo) => {
   test.setTimeout(420_000);
-  const tag = `Playwright-Intent-${Date.now()}`;
+  const tag = `Playwright-Followup-${Date.now()}`;
+  const followupNote = `家长这周先看变化，${Date.now()}`;
 
   await resetStudentQuota(page);
   const first = await createDiagnosis(page, tag);
   expect(first.recheckTaskId).toBeTruthy();
 
-  await page.getByRole("link", { name: "继续追踪" }).click();
-  await expect(page).toHaveURL(new RegExp(`/recheck/${first.recheckTaskId}$`), { timeout: 30_000 });
-  await page.goto(`/diagnosis/${first.diagnosisId}`);
   await page.locator('textarea').last().fill("这周想继续看 4 周变化，先别让这条又掉回去。");
   await page.getByRole("button", { name: "提交开通意向" }).click();
   await expect(page.locator("main")).toContainText("我先把这条继续追踪意向记下来了", { timeout: 30_000 });
 
   await login(page, "admin@example.com");
   await page.goto("/admin/operations");
-  await expect(page.locator("main")).toContainText("立即跑本周周报批处理", { timeout: 30_000 });
-  await page.getByRole("button", { name: "立即跑本周周报批处理" }).click();
-  await expect(page.locator("main")).toContainText("谁提交了开通意向", { timeout: 30_000 });
-  await expect(page.locator("main")).toContainText("这周想继续看 4 周变化", { timeout: 30_000 });
-  await page.getByRole("button", { name: "标记已开通" }).first().click();
-  await expect(page.locator("main")).toContainText("谁已开通", { timeout: 30_000 });
-  await expect(page.locator("main")).toContainText("当前状态：active", { timeout: 30_000 });
-  await page.screenshot({ path: testInfo.outputPath("03-operations-growth.png"), fullPage: true });
+  await expect(page.locator("main")).toContainText("周报自动调度", { timeout: 30_000 });
+  await expect(page.locator('[data-testid^="weekly-batch-run-"]').first()).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("button", { name: "手动重跑本周周报" }).click();
+  await expect(page.locator("main")).toContainText("最近一次产出", { timeout: 30_000 });
+  await page.screenshot({ path: testInfo.outputPath("03-operations-scheduler.png"), fullPage: true });
+
+  await page.goto("/admin/follow-ups");
+  const card = page.locator('[data-testid^="lead-followup-"]').first();
+  await expect(card).toContainText("新意向", { timeout: 30_000 });
+  await expect(card).toContainText("这周想继续看 4 周变化", { timeout: 30_000 });
+  await card.locator('select').selectOption("contacted");
+  await card.locator('textarea').fill(followupNote);
+  await card.getByRole("button", { name: "保存跟进" }).click();
+  await expect(card).toContainText("已联系", { timeout: 30_000 });
+  await expect(page.locator("main")).toContainText(followupNote, { timeout: 30_000 });
+  await card.locator('select').selectOption("activated");
+  await card.getByRole("button", { name: "保存跟进" }).click();
+  await expect(card).toContainText("已开通", { timeout: 30_000 });
+  await page.screenshot({ path: testInfo.outputPath("04-followup-funnel.png"), fullPage: true });
 });
+
+

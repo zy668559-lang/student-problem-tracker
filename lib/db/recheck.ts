@@ -24,6 +24,8 @@ interface DiagnosisContext {
   note: string | null;
   studentSelfReport: string | null;
   stepQuality: string | null;
+  submissionType: string | null;
+  sourceRecheckTaskId: number | null;
   createdAt: string;
 }
 
@@ -103,7 +105,9 @@ function getDiagnosisContext(diagnosisId: number): DiagnosisContext | null {
       u.score_note,
       u.note,
       u.student_self_report,
-      u.step_quality
+      u.step_quality,
+      u.submission_type,
+      u.source_recheck_task_id
     FROM diagnoses d
     INNER JOIN uploads u ON u.id = d.upload_id
     WHERE d.id = ?
@@ -123,6 +127,8 @@ function getDiagnosisContext(diagnosisId: number): DiagnosisContext | null {
     note: string | null;
     student_self_report: string | null;
     step_quality: string | null;
+    submission_type: string | null;
+    source_recheck_task_id: number | null;
   } | undefined;
 
   if (!row) return null;
@@ -140,6 +146,8 @@ function getDiagnosisContext(diagnosisId: number): DiagnosisContext | null {
     note: row.note,
     studentSelfReport: row.student_self_report,
     stepQuality: row.step_quality,
+    submissionType: row.submission_type,
+    sourceRecheckTaskId: row.source_recheck_task_id,
     createdAt: row.created_at
   };
 }
@@ -194,11 +202,26 @@ function hasWeeklyCarryOver(report: WeeklyReportPayload | null, module: string, 
 function pickFocusTag(context: DiagnosisContext) {
   const report = getLatestWeeklyReportSnapshot(context.studentId);
   const paidTrackingEnabled = getPaidTrackingEnabled(context.studentId);
+  const selfReport = normalizeText(context.studentSelfReport ?? "");
+  const selfReportTag = selfReport
+    ? context.problemTags.find((tag) => normalizeText(tag).includes(selfReport) || selfReport.includes(normalizeText(tag)))
+    : null;
+
+  if (selfReportTag) {
+    const metrics = getTagMetrics(context.studentId, selfReportTag);
+    return {
+      tag: selfReportTag,
+      metrics,
+      carryOver: hasWeeklyCarryOver(report, context.module, selfReportTag),
+      score: 9999,
+      paidTrackingEnabled
+    };
+  }
+
   const ranked = context.problemTags.map((tag) => {
     const metrics = getTagMetrics(context.studentId, tag);
     const carryOver = hasWeeklyCarryOver(report, context.module, tag);
-    const selfReportBonus = tag.startsWith("?????") ? 400 : 0;
-    const score = metrics.repeatCount30d * 10 + metrics.repeatCount7d * 6 + (carryOver ? 8 : 0) + (paidTrackingEnabled ? 2 : 0) + selfReportBonus;
+    const score = Math.min(metrics.repeatCount30d, 6) * 10 + Math.min(metrics.repeatCount7d, 4) * 6 + (carryOver ? 8 : 0) + (paidTrackingEnabled ? 2 : 0);
     return { tag, metrics, carryOver, score };
   }).sort((left, right) => right.score - left.score);
 
@@ -329,6 +352,11 @@ function getOpenTask(studentId: number, subject: Subject, module: string, tag: s
   return row ? mapTask(row) : null;
 }
 
+function getTaskById(taskId: number, studentId: number) {
+  const db = getDb();
+  const row = db.prepare(`SELECT * FROM recheck_tasks WHERE id = ? AND student_id = ? LIMIT 1`).get(taskId, studentId);
+  return row ? mapTask(row) : null;
+}
 function getLinkedTask(diagnosisId: number) {
   const db = getDb();
   const row = db.prepare(`SELECT rt.* FROM recheck_tasks rt INNER JOIN diagnoses d ON d.recheck_task_id = rt.id WHERE d.id = ? LIMIT 1`).get(diagnosisId);
@@ -646,8 +674,19 @@ export function syncRecheckForDiagnosis(diagnosisId: number): RecheckSyncResult 
     };
   }
 
-  const focus = pickFocusTag(context);
-  const existingTask = getOpenTask(context.studentId, context.subject, context.module, focus.tag);
+  const forcedTask = context.submissionType === "recheck" && context.sourceRecheckTaskId
+    ? getTaskById(context.sourceRecheckTaskId, context.studentId)
+    : null;
+  const focus = forcedTask
+    ? {
+        tag: forcedTask.tag,
+        metrics: getTagMetrics(context.studentId, forcedTask.tag),
+        carryOver: hasWeeklyCarryOver(getLatestWeeklyReportSnapshot(context.studentId), context.module, forcedTask.tag),
+        score: 9999,
+        paidTrackingEnabled: forcedTask.paidTrackingEnabled
+      }
+    : pickFocusTag(context);
+  const existingTask = forcedTask ?? getOpenTask(context.studentId, context.subject, context.module, focus.tag);
 
   if (!existingTask) {
     const task = createTask(context, focus.tag, focus.metrics.repeatCount7d, focus.metrics.repeatCount30d, focus.metrics.lastSeenAt, focus.carryOver, focus.paidTrackingEnabled);
@@ -785,7 +824,7 @@ export function getWeeklyReportRecheckOverlay(studentId = getPrimaryStudentId())
 
 export function attachWeeklyReportToRecheckTasks(studentId: number, weeklyReportId: number) {
   const db = getDb();
-  db.prepare(`UPDATE recheck_tasks SET weekly_report_id = ?, updated_at = ? WHERE student_id = ? AND status != 'dismissed'`).run(weeklyReportId, new Date().toISOString(), studentId);
+  db.prepare(`UPDATE recheck_tasks SET weekly_report_id = ? WHERE student_id = ? AND status != 'dismissed'`).run(weeklyReportId, studentId);
 }
 
 export function listStudentRecheckTasks(studentId = getPrimaryStudentId()) {
@@ -799,3 +838,6 @@ export function listAllRecheckTasks() {
   const rows = db.prepare(`SELECT * FROM recheck_tasks ORDER BY updated_at DESC, id DESC`).all();
   return rows.map((row) => mapTask(row));
 }
+
+
+

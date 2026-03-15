@@ -1,4 +1,5 @@
 ﻿import { NextResponse } from "next/server";
+import { ensureA4Schema, syncLeadFollowupFromTrackingIntent } from "@/lib/db/a4";
 import { appendResultPageEvent, ensureProductSchema } from "@/lib/db/product";
 import { createTrackingIntent, ensureP25Schema } from "@/lib/db/p25";
 import { getActiveStudentId, parseSessionFromCookieHeader } from "@/lib/session";
@@ -6,6 +7,7 @@ import { getActiveStudentId, parseSessionFromCookieHeader } from "@/lib/session"
 export async function POST(request: Request) {
   ensureProductSchema();
   ensureP25Schema();
+  ensureA4Schema();
   const session = parseSessionFromCookieHeader(request.headers.get("cookie"));
   const studentId = getActiveStudentId(session);
   const body = (await request.json()) as { diagnosisId?: number; recheckTaskId?: number | null; requestedWeeks?: number; note?: string | null };
@@ -21,6 +23,7 @@ export async function POST(request: Request) {
     requestedWeeks: body.requestedWeeks ?? 4,
     note: body.note ?? null
   });
+  syncLeadFollowupFromTrackingIntent(id);
 
   appendResultPageEvent({
     studentId,

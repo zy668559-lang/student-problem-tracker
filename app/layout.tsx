@@ -1,8 +1,9 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
 import { AppShell } from "@/components/app-shell";
 import { listStudentsForUser } from "@/lib/db/admin";
+import { maybeRunWeeklyBatchScheduler } from "@/lib/db/a4";
 import { ensureProductSchema } from "@/lib/db/product";
 import { getServerSession } from "@/lib/session";
 
@@ -13,6 +14,7 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   ensureProductSchema();
+  await maybeRunWeeklyBatchScheduler("app-layout");
   const session = await getServerSession();
   const students = session?.userId ? listStudentsForUser(session.userId) : [];
 

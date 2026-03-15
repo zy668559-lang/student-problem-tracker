@@ -59,6 +59,9 @@ export default async function RecheckTaskPage({ params }: { params: Promise<{ id
         </SectionCard>
         <SectionCard title="结果对比入口" subtitle="做完之后，直接回头对比上次">
           <div className="space-y-3 text-sm leading-6 text-slate">
+            <Link href={`/compare/${task.id}`} className="block rounded-2xl border border-line bg-white px-4 py-3 text-ink">
+              打开结果对比页
+            </Link>
             <Link href={task.compareDiagnosisId ? `/diagnosis/${task.compareDiagnosisId}` : "/dashboard"} className="block rounded-2xl border border-line bg-white px-4 py-3 text-ink">
               看上次诊断
             </Link>
@@ -95,3 +98,4 @@ export default async function RecheckTaskPage({ params }: { params: Promise<{ id
     </div>
   );
 }
+

@@ -117,6 +117,7 @@ export default async function DiagnosisPage({ params }: { params: Promise<{ id: 
         <SectionCard title="这条复检怎么接着走" subtitle="别只看完结果，下一步要顺着同一条线继续看">
           <div className="flex flex-wrap gap-3">
             <Link href={`/recheck/${followupRecheckTaskId}`} className="rounded-2xl bg-ink px-5 py-3 text-sm font-semibold text-white">进入复检任务页</Link>
+            <Link href={`/compare/${followupRecheckTaskId}`} className="rounded-2xl border border-line bg-white px-5 py-3 text-sm font-semibold text-ink">看结果对比页</Link>
             <Link href={latestReportId ? `/weekly-report/${latestReportId}` : "/dashboard"} className="rounded-2xl border border-line bg-white px-5 py-3 text-sm font-semibold text-ink">看这周对比</Link>
           </div>
         </SectionCard>
@@ -151,5 +152,6 @@ export default async function DiagnosisPage({ params }: { params: Promise<{ id: 
     </div>
   );
 }
+
 
 
