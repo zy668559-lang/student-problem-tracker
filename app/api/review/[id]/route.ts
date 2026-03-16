@@ -6,6 +6,7 @@ import {
   upsertWeeklyReport
 } from "@/lib/db";
 import { attachWeeklyReportToRecheckTasks, syncRecheckForDiagnosis } from "@/lib/db/recheck";
+import { ensureHeartbeatSchema, syncHeartbeatForStudent } from "@/lib/db/heartbeat";
 import {
   appendStructuredChangeLog,
   ensureProductSchema,
@@ -41,6 +42,7 @@ function mapActionToStatus(action: string): ReviewStatus {
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   ensureProductSchema();
   ensureP25Schema();
+  ensureHeartbeatSchema();
   const { id } = await params;
   const body = (await request.json()) as { action?: string; payloadText?: string; reviewNotes?: string };
 
@@ -127,5 +129,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   attachWeeklyReportToRecheckTasks(context.student_id, weeklyReportId);
   upsertStudentMemorySummary(context.student_id);
 
+  syncHeartbeatForStudent(context.student_id, "review_update");
   return NextResponse.json({ ok: true, reviewDiff, recheckTaskId: recheck.task?.id ?? null, weeklyReportId });
 }
+
+
+
+
+

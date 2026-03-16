@@ -1,6 +1,7 @@
-export const dynamic = "force-dynamic";
+﻿export const dynamic = "force-dynamic";
 
 import Link from "next/link";
+import { HeartbeatRunPanel } from "@/components/admin/heartbeat-run-panel";
 import { getAdminControlCenterSnapshot } from "@/lib/db/a43";
 
 function QueueSection({
@@ -29,7 +30,7 @@ function QueueSection({
               <span className="rounded-full bg-mist px-3 py-1 text-xs font-semibold text-ink">{item.badge}</span>
             </div>
           </Link>
-        )) : <p className="rounded-2xl border border-dashed border-line px-4 py-5 text-sm leading-6 text-slate">这块今天先没有要立刻处理的。</p>}
+        )) : <p className="rounded-2xl border border-dashed border-line px-4 py-5 text-sm leading-6 text-slate">这一块今天先没有要立刻处理的。</p>}
       </div>
     </section>
   );
@@ -45,11 +46,21 @@ export default async function AdminOverviewPage({ searchParams }: { searchParams
       <section className="rounded-panel border border-white/70 bg-white/90 p-6 shadow-panel sm:p-8">
         <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent/70">Admin</p>
         <h1 className="mt-3 text-3xl font-semibold text-ink">运营后台</h1>
-        <p className="mt-3 max-w-3xl text-sm leading-7 text-slate">这页就回答一个问题：今天先处理谁。先回访谁、先复检谁、先审核谁、谁最可能转成继续追踪，都按现成证据排出来。</p>
+        <p className="mt-3 max-w-3xl text-sm leading-7 text-slate">这一页只回答一个问题：今天先处理谁。谁停了、谁该复检、谁该回访、谁待审核，统一按现成证据和 Heartbeat 事件排出来。</p>
       </section>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {[snapshot.todayFollowups, snapshot.todayRechecks, snapshot.todayReviews, snapshot.weeklyHighIntent, snapshot.weeklyBatchStatus, snapshot.todayModelCost].map((item) => (
+      <HeartbeatRunPanel recentRun={snapshot.recentHeartbeatRun} />
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {[
+          snapshot.todayReminders,
+          snapshot.todayFollowups,
+          snapshot.todayRechecks,
+          snapshot.todayReviews,
+          snapshot.weeklyHighIntent,
+          snapshot.weeklyBatchStatus,
+          snapshot.todayModelCost
+        ].map((item) => (
           <div key={item.title} className="rounded-panel border border-white/70 bg-white/90 p-5 shadow-panel" data-testid={`control-metric-${item.title}`}>
             <p className="text-sm text-slate">{item.title}</p>
             <p className="mt-3 text-4xl font-semibold text-ink">{item.count}</p>
@@ -60,7 +71,7 @@ export default async function AdminOverviewPage({ searchParams }: { searchParams
 
       <section className="rounded-panel border border-white/70 bg-white/90 p-5 shadow-panel">
         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent/70">Quick Entry</p>
-        <h2 className="mt-2 text-xl font-semibold text-ink">快速入口</h2>
+        <h2 className="mt-2 text-xl font-semibold text-ink">快捷入口</h2>
         <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           {snapshot.quickLinks.map((item) => (
             <Link key={item.href} href={item.href} className="rounded-2xl border border-line px-4 py-4 transition hover:bg-mist">
@@ -73,8 +84,9 @@ export default async function AdminOverviewPage({ searchParams }: { searchParams
 
       <div className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
         <div className="space-y-6">
-          <QueueSection title="今日待回访" subtitle="Followup" items={snapshot.followupItems} testId="control-followups" />
-          <QueueSection title="今日待复检" subtitle="Recheck" items={snapshot.recheckItems} testId="control-rechecks" />
+          <QueueSection title="今日待提醒学生" subtitle="Heartbeat / Reminder" items={snapshot.reminderItems} testId="control-reminders" />
+          <QueueSection title="今日待回访家长" subtitle="Heartbeat / Followup" items={snapshot.followupItems} testId="control-followups" />
+          <QueueSection title="今日待复检学生" subtitle="Heartbeat / Recheck" items={snapshot.recheckItems} testId="control-rechecks" />
           <QueueSection title="今日待审核" subtitle="Review" items={snapshot.reviewItems} testId="control-reviews" />
           <QueueSection title="本周高意向家长" subtitle="Intent" items={snapshot.highIntentItems} testId="control-high-intent" />
         </div>
@@ -144,3 +156,4 @@ export default async function AdminOverviewPage({ searchParams }: { searchParams
     </div>
   );
 }
+

@@ -1,10 +1,12 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
+import { ensureHeartbeatSchema, syncHeartbeatForStudent } from "@/lib/db/heartbeat";
 import { applyAdminMembershipAction, ensureMembershipSchema } from "@/lib/db/membership";
 import { isAdminSession, parseSessionFromCookieHeader } from "@/lib/session";
 import type { MembershipManagementAction, MembershipTier } from "@/lib/types";
 
 export async function PATCH(request: Request, context: { params: Promise<{ studentId: string }> }) {
   ensureMembershipSchema();
+  ensureHeartbeatSchema();
   const session = parseSessionFromCookieHeader(request.headers.get("cookie"));
   if (!session || !isAdminSession(session)) {
     return NextResponse.json({ ok: false, message: "只有管理员能改会员状态。" }, { status: 403 });
@@ -35,8 +37,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ stude
       reason: body.reason ?? null,
       adminSession: session
     });
+    syncHeartbeatForStudent(item.studentId, "membership_admin");
     return NextResponse.json({ ok: true, item });
   } catch {
     return NextResponse.json({ ok: false, message: "这位孩子的会员状态我这边没改进去。" }, { status: 400 });
   }
 }
+

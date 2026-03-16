@@ -1,4 +1,4 @@
-export type Subject = "math" | "english";
+﻿export type Subject = "math" | "english";
 
 export type ReviewStatus = "pending" | "approved" | "rejected" | "edited";
 export type DiagnosisMode = "quick" | "standard" | "deep";
@@ -608,6 +608,66 @@ export interface TrackingOfferDetail {
   benefits: string[];
 }
 
+export type HeartbeatEventType = "student_reminder" | "student_recheck" | "parent_followup" | "operations_attention";
+export type HeartbeatEventStatus = "open" | "resolved" | "consumed";
+
+export interface HeartbeatRuleDefinition {
+  id: number;
+  ruleKey: string;
+  title: string;
+  description: string;
+  eventType: HeartbeatEventType;
+  enabled: boolean;
+  config: Record<string, string | number | boolean | null>;
+  updatedAt: string;
+}
+
+export interface HeartbeatEventDetail {
+  id: number;
+  eventKey: string;
+  ruleKey: string;
+  eventType: HeartbeatEventType;
+  status: HeartbeatEventStatus;
+  studentId: number;
+  studentName: string;
+  parentAccountId: number;
+  parentName: string;
+  parentEmail: string;
+  summary: string;
+  reason: string;
+  actionHint: string;
+  sourceRefType: string | null;
+  sourceRefId: number | null;
+  hitCount: number;
+  firstHitAt: string;
+  lastHitAt: string;
+  resolvedAt: string | null;
+  metadata: Record<string, string | number | boolean | null>;
+}
+
+export interface HeartbeatRunDetail {
+  id: number;
+  triggerSource: string;
+  triggeredBy: number | null;
+  triggeredByName: string | null;
+  status: "running" | "success" | "failed";
+  studentsScanned: number;
+  openEventCount: number;
+  errorMessage: string | null;
+  startedAt: string;
+  finishedAt: string | null;
+  createdAt: string;
+}
+
+export interface HeartbeatSnapshot {
+  rules: HeartbeatRuleDefinition[];
+  reminderItems: HeartbeatEventDetail[];
+  recheckItems: HeartbeatEventDetail[];
+  followupItems: HeartbeatEventDetail[];
+  operationsItems: HeartbeatEventDetail[];
+  recentRuns: HeartbeatRunDetail[];
+}
+
 export interface AdminControlCenterMetric {
   title: string;
   subtitle: string;
@@ -640,6 +700,7 @@ export interface AdminControlCenterStudentDetail {
 }
 
 export interface AdminControlCenterSnapshot {
+  todayReminders: AdminControlCenterMetric;
   todayFollowups: AdminControlCenterMetric;
   todayRechecks: AdminControlCenterMetric;
   todayReviews: AdminControlCenterMetric;
@@ -647,15 +708,16 @@ export interface AdminControlCenterSnapshot {
   weeklyBatchStatus: AdminControlCenterMetric;
   todayModelCost: AdminControlCenterMetric;
   quickLinks: Array<{ href: string; title: string; detail: string }>;
+  reminderItems: AdminControlCenterQueueItem[];
   followupItems: AdminControlCenterQueueItem[];
   recheckItems: AdminControlCenterQueueItem[];
   reviewItems: AdminControlCenterQueueItem[];
   highIntentItems: AdminControlCenterQueueItem[];
+  recentHeartbeatRun: HeartbeatRunDetail | null;
   studentChoices: Array<{ studentId: number; studentName: string; parentName: string }>;
   selectedStudent: AdminControlCenterStudentDetail | null;
   selectedStudentId: number | null;
-}
-export interface EvidenceTimelineNode {
+}export interface EvidenceTimelineNode {
   id: string;
   entityId: number | null;
   kind: "upload" | "diagnosis" | "recheck_task" | "weekly_report" | "change_log" | "result_event" | "memory";
@@ -684,3 +746,6 @@ export interface EvidenceTimelineDetail {
   recentEventSummary: string[];
   nodes: EvidenceTimelineNode[];
 }
+
+
+

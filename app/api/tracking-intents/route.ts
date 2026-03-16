@@ -1,6 +1,7 @@
 ﻿import { NextResponse } from "next/server";
 import { ensureA4Schema, syncLeadFollowupFromTrackingIntent } from "@/lib/db/a4";
 import { ensureFollowupSchema, syncFollowupLeadFromTrackingIntent } from "@/lib/db/followups";
+import { ensureHeartbeatSchema, syncHeartbeatForStudent } from "@/lib/db/heartbeat";
 import { appendResultPageEvent, ensureProductSchema } from "@/lib/db/product";
 import { createTrackingIntent, ensureP25Schema } from "@/lib/db/p25";
 import { getActiveStudentId, parseSessionFromCookieHeader } from "@/lib/session";
@@ -11,6 +12,7 @@ export async function POST(request: Request) {
   ensureP25Schema();
   ensureA4Schema();
   ensureFollowupSchema();
+  ensureHeartbeatSchema();
   const session = parseSessionFromCookieHeader(request.headers.get("cookie"));
   const studentId = getActiveStudentId(session);
   const body = (await request.json()) as {
@@ -43,5 +45,7 @@ export async function POST(request: Request) {
     eventValue: `weeks:${body.requestedWeeks ?? 4}`
   });
 
+  syncHeartbeatForStudent(studentId, "tracking_intent");
   return NextResponse.json({ ok: true, id });
 }
+

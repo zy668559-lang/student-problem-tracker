@@ -1,10 +1,12 @@
 ﻿import { NextResponse } from "next/server";
 import { ensureFollowupSchema, recordFollowupAction } from "@/lib/db/followups";
+import { ensureHeartbeatSchema, syncHeartbeatForStudent } from "@/lib/db/heartbeat";
 import { isAdminSession, parseSessionFromCookieHeader } from "@/lib/session";
 import type { FollowupActionType, LeadFollowupStatus } from "@/lib/types";
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   ensureFollowupSchema();
+  ensureHeartbeatSchema();
   const session = parseSessionFromCookieHeader(request.headers.get("cookie"));
   if (!session || !isAdminSession(session)) {
     return NextResponse.json({ ok: false, message: "只有管理员能改跟进 SOP。" }, { status: 403 });
@@ -29,8 +31,13 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       rejectionReason: body.rejectionReason ?? null,
       adminSession: session
     });
+    if (!item) {
+      return NextResponse.json({ ok: false, message: "这条线索我这边没找到。" }, { status: 404 });
+    }
+    syncHeartbeatForStudent(item.studentId, "followup_action");
     return NextResponse.json({ ok: true, item });
   } catch {
     return NextResponse.json({ ok: false, message: "这条线索我这边没找到。" }, { status: 404 });
   }
 }
+

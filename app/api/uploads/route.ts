@@ -8,6 +8,7 @@ import {
   upsertWeeklyReport
 } from "@/lib/db";
 import { attachWeeklyReportToRecheckTasks, syncRecheckForDiagnosis } from "@/lib/db/recheck";
+import { ensureHeartbeatSchema, syncHeartbeatForStudent } from "@/lib/db/heartbeat";
 import {
   appendStructuredChangeLog,
   ensureProductSchema,
@@ -50,6 +51,7 @@ function inferDiagnosisMode(hasSteps: boolean, stuckPointChoice: string, hasHist
 export async function POST(request: Request) {
   ensureProductSchema();
   ensureP25Schema();
+  ensureHeartbeatSchema();
   const formData = await request.formData();
   const file = formData.get("file");
   const subject = formData.get("subject");
@@ -229,5 +231,11 @@ export async function POST(request: Request) {
     upsertStudentMemorySummary(studentId);
   }
 
+  syncHeartbeatForStudent(studentId, submissionType === "recheck" ? "upload_recheck" : "upload_diagnosis");
   return NextResponse.json({ ok: true, diagnosisId, weeklyReportId, recheckTaskId: recheck.task?.id ?? null, submissionType });
 }
+
+
+
+
+

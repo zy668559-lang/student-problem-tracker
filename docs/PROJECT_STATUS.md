@@ -1,4 +1,4 @@
-# Project Status
+﻿# Project Status
 
 Last updated: 2026-03-16
 Branch baseline: `feature/mvp-init`
@@ -156,3 +156,9 @@ Branch baseline: `feature/mvp-init`
 
 - A7: Heartbeat Lite
   - Goal direction: turn current evidence, membership, followup, and weekly rhythm into a lightweight recurring heartbeat layer without introducing payment or worker/cron.
+  - Planned scope:
+    - lightweight heartbeat rules
+    - inspectable heartbeat hit events
+    - control-center pending linkage
+    - admin manual run and in-app trigger only
+

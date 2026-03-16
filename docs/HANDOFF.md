@@ -1,4 +1,4 @@
-# Handoff
+﻿# Handoff
 
 Last updated: 2026-03-16
 
@@ -16,6 +16,7 @@ When starting the next round, read in this order:
 
 - Branch: `feature/mvp-init`
 - Product baseline: A1-A6 landed
+- Current target: A7 Heartbeat Lite
 - A6 status: completed
 - Latest verification baseline:
   - `npm run typecheck`: passed
@@ -38,8 +39,17 @@ Suggested implementation direction:
 
 - create a lightweight heartbeat rule layer on top of existing evidence, recheck, weekly report, and membership signals
 - add a heartbeat hit-event layer so the system knows when a student has entered a heartbeat-worthy state
+- support at least inactivity, overdue recheck, repeated unstable error, and undecided parent followup rules
 - connect heartbeat pending items to the control center instead of building a new admin shell
+- support admin manual run and lightweight in-app refresh only
 - add dedicated A7 e2e
+
+Expected A7 output:
+
+- explicit heartbeat rules with inspectable config
+- per-student / per-parent heartbeat events without cross-student leakage
+- control center cards for today reminder / recheck / followup heartbeat items
+- no standalone worker/cron and no payment work
 
 ## Constraints Still In Force
 
@@ -57,3 +67,4 @@ Before ending any future round:
 - update `docs/PROJECT_STATUS.md` if stage truth changed
 - run `typecheck`, `build`, and full `playwright`
 - commit and push feature branch to both remotes
+

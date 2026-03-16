@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
+import { ensureHeartbeatSchema, syncHeartbeatForStudent } from "@/lib/db/heartbeat";
 import { appendResultPageEvent, ensureProductSchema } from "@/lib/db/product";
 import { ensureFollowupSchema, syncFollowupLeadFromResultEvent } from "@/lib/db/followups";
 import { getActiveStudentId, parseSessionFromCookieHeader } from "@/lib/session";
@@ -7,6 +8,7 @@ import type { ResultEventName } from "@/lib/types";
 export async function POST(request: Request) {
   ensureProductSchema();
   ensureFollowupSchema();
+  ensureHeartbeatSchema();
   const body = (await request.json()) as { diagnosisId?: number; eventName?: ResultEventName; assetId?: number | null; eventValue?: string | null };
 
   if (!body.diagnosisId || !body.eventName) {
@@ -14,7 +16,6 @@ export async function POST(request: Request) {
   }
 
   const session = parseSessionFromCookieHeader(request.headers.get("cookie"));
-
   const studentId = getActiveStudentId(session);
 
   appendResultPageEvent({
@@ -31,6 +32,8 @@ export async function POST(request: Request) {
     eventName: body.eventName,
     eventValue: body.eventValue ?? null
   });
+  syncHeartbeatForStudent(studentId, "result_event");
 
   return NextResponse.json({ ok: true });
 }
+

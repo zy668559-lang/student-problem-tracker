@@ -1,10 +1,12 @@
 ﻿import { NextResponse } from "next/server";
+import { ensureHeartbeatSchema, syncHeartbeatForStudent } from "@/lib/db/heartbeat";
 import { applyManualRecheckDecision, ensureP25Schema } from "@/lib/db/p25";
 import { isAdminSession, parseSessionFromCookieHeader } from "@/lib/session";
 import type { RecheckManualDecision } from "@/lib/types";
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   ensureP25Schema();
+  ensureHeartbeatSchema();
   const session = parseSessionFromCookieHeader(request.headers.get("cookie"));
   if (!session || !isAdminSession(session)) {
     return NextResponse.json({ ok: false, message: "只有管理员能改复检任务。" }, { status: 403 });
@@ -24,6 +26,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       reason: body.reason ?? null,
       adminSession: session
     });
+    syncHeartbeatForStudent(result.task.studentId, "recheck_manual");
     return NextResponse.json({ ok: true, item: result.task, weeklyReportId: result.weeklyReportId });
   } catch (error) {
     if (error instanceof Error && error.message === "membership_teacher_correction_required") {
@@ -32,3 +35,4 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     return NextResponse.json({ ok: false, message: "这条复检任务我这边没找到。" }, { status: 404 });
   }
 }
+
