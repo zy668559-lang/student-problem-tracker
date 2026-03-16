@@ -1,4 +1,4 @@
-﻿import { DEFAULT_WEEKLY_REPORT, SKILL_ASSET_SEEDS } from "@/lib/mock-data";
+import { DEFAULT_WEEKLY_REPORT, SKILL_ASSET_SEEDS } from "@/lib/mock-data";
 import { getDb, getPrimaryStudentId, getStudentDiagnoses } from "@/lib/db";
 import { getStudentRecheckMemoryPatch } from "@/lib/db/recheck";
 import { rewriteMemorySummaryForChenTeacher } from "@/lib/services/tone-chen";
@@ -14,9 +14,9 @@ import type {
   StepQuality,
   StuckPointSource,
   Subject,
+  TrackingStatus,
   TrialAccessSnapshot
 } from "@/lib/types";
-
 function getPrimaryUserId() {
   const db = getDb();
   const row = db.prepare(`SELECT id FROM users ORDER BY id ASC LIMIT 1`).get() as { id: number };
@@ -303,11 +303,11 @@ export function ensureProductSchema() {
 export function getTrialAccessSnapshot(studentId = getPrimaryStudentId()): TrialAccessSnapshot {
   ensureProductSchema();
   const db = getDb();
-  let row = db.prepare(`SELECT ta.user_id, ta.student_id, ta.phone, ta.invite_code, ta.whitelist_enabled, ta.free_trial_total, ta.free_trial_used, ta.max_images_per_upload, ta.enabled_grades, ta.enabled_subjects, ta.paid_tracking_enabled, s.grade, s.name AS student_name FROM trial_access ta INNER JOIN students s ON s.id = ta.student_id WHERE ta.student_id = ? LIMIT 1`).get(studentId) as { user_id: number; student_id: number; phone: string | null; invite_code: string | null; whitelist_enabled: number; free_trial_total: number; free_trial_used: number; max_images_per_upload: number; enabled_grades: string; enabled_subjects: string; paid_tracking_enabled: number; grade: string | null; student_name: string } | undefined;
+  let row = db.prepare(`SELECT ta.user_id, ta.student_id, ta.phone, ta.invite_code, ta.whitelist_enabled, ta.free_trial_total, ta.free_trial_used, ta.max_images_per_upload, ta.enabled_grades, ta.enabled_subjects, ta.paid_tracking_enabled, ta.tracking_status, s.grade, s.name AS student_name FROM trial_access ta INNER JOIN students s ON s.id = ta.student_id WHERE ta.student_id = ? LIMIT 1`).get(studentId) as { user_id: number; student_id: number; phone: string | null; invite_code: string | null; whitelist_enabled: number; free_trial_total: number; free_trial_used: number; max_images_per_upload: number; enabled_grades: string; enabled_subjects: string; paid_tracking_enabled: number; tracking_status: string | null; grade: string | null; student_name: string } | undefined;
 
   if (!row) {
     createDefaultTrialAccessForStudent(studentId);
-    row = db.prepare(`SELECT ta.user_id, ta.student_id, ta.phone, ta.invite_code, ta.whitelist_enabled, ta.free_trial_total, ta.free_trial_used, ta.max_images_per_upload, ta.enabled_grades, ta.enabled_subjects, ta.paid_tracking_enabled, s.grade, s.name AS student_name FROM trial_access ta INNER JOIN students s ON s.id = ta.student_id WHERE ta.student_id = ? LIMIT 1`).get(studentId) as typeof row;
+    row = db.prepare(`SELECT ta.user_id, ta.student_id, ta.phone, ta.invite_code, ta.whitelist_enabled, ta.free_trial_total, ta.free_trial_used, ta.max_images_per_upload, ta.enabled_grades, ta.enabled_subjects, ta.paid_tracking_enabled, ta.tracking_status, s.grade, s.name AS student_name FROM trial_access ta INNER JOIN students s ON s.id = ta.student_id WHERE ta.student_id = ? LIMIT 1`).get(studentId) as typeof row;
   }
 
   if (!row) {
@@ -332,6 +332,7 @@ export function getTrialAccessSnapshot(studentId = getPrimaryStudentId()): Trial
     enabledSubjects,
     gradeOpen,
     paidTrackingEnabled: Boolean(row.paid_tracking_enabled),
+    trackingStatus: (row.tracking_status ?? (row.paid_tracking_enabled ? "active" : "trial")) as TrackingStatus,
     subjectOpenMap: { math: enabledSubjects.includes("math"), english: enabledSubjects.includes("english") }
   };
 }

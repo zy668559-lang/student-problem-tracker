@@ -1,4 +1,4 @@
-﻿import fs from "node:fs/promises";
+import fs from "node:fs/promises";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 
@@ -106,7 +106,8 @@ test("manual recheck correction writes back priority and weekly report", async (
   await taskCard.locator(`input[name="priority-${first.recheckTaskId}"]`).fill("下轮先继续轰炸这个高频错因，先别换线。");
   await taskCard.locator(`textarea[name="reason-${first.recheckTaskId}"]`).fill("这块最近重复回来得太勤，现在最怕的是看着懂了，过几天又掉回去。先别松手。");
   await taskCard.getByRole("button", { name: "保存人工纠偏" }).click();
-  await expect(taskCard).toContainText("下轮先继续轰炸这个高频错因，先别换线。", { timeout: 30_000 });
+  await expect(taskCard.locator(`input[name="priority-${first.recheckTaskId}"]`)).toHaveValue("下轮先继续轰炸这个高频错因，先别换线。", { timeout: 30_000 });
+  await expect(taskCard.locator(`textarea[name="reason-${first.recheckTaskId}"]`)).toHaveValue(/这块最近重复回来得太勤/, { timeout: 30_000 });
   await page.screenshot({ path: testInfo.outputPath("02-admin-recheck-manual.png"), fullPage: true });
 
   await login(page, "parent@example.com");
@@ -159,6 +160,3 @@ test("weekly scheduler and follow-up funnel are visible and editable in admin", 
   await expect(card).toContainText("当前状态：已开通", { timeout: 30_000 });
   await page.screenshot({ path: testInfo.outputPath("04-followup-funnel.png"), fullPage: true });
 });
-
-
-

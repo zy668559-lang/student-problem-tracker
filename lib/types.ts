@@ -28,11 +28,16 @@ export type ResultEventName =
   | "complete_recheck_upload"
   | "viewed_recheck_result_complete"
   | "opened_compare_page"
+  | "opened_tracking_offer"
+  | "viewed_tracking_offer_complete"
   | "click_continue_tracking"
+  | "click_tracking_offer_continue"
+  | "click_tracking_offer_take_advice"
   | "click_asset"
   | "click_only_take_advice"
   | "paid_conversion"
-  | "submit_tracking_intent";
+  | "submit_tracking_intent"
+  | "exit_tracking_offer";
 
 export interface DiagnosisPayload {
   current_stage: string;
@@ -521,6 +526,69 @@ export interface FollowupBoardSnapshot {
   templates: FollowupTemplate[];
 }
 
+
+export interface TrackingOfferDetail {
+  studentId: number;
+  studentName: string;
+  diagnosisId: number | null;
+  priorityRecheckTaskId: number | null;
+  latestWeeklyReportId: number | null;
+  currentProblem: string;
+  weeklyChange: string;
+  unstableStep: string;
+  nextPriority: string;
+  continueTrackingReason: string;
+  trackingStatus: TrackingStatus;
+  benefits: string[];
+}
+
+export interface AdminControlCenterMetric {
+  title: string;
+  subtitle: string;
+  count: number;
+  detail: string;
+}
+
+export interface AdminControlCenterQueueItem {
+  studentId: number;
+  studentName: string;
+  parentName: string;
+  parentEmail: string;
+  summary: string;
+  href: string;
+  badge: string;
+  createdAt: string | null;
+}
+
+export interface AdminControlCenterStudentDetail {
+  studentId: number;
+  studentName: string;
+  parentName: string;
+  parentEmail: string;
+  currentBlockPoint: string;
+  weeklyChangeSummary: string;
+  unstableStep: string;
+  nextPriority: string;
+  recentFollowupActions: string[];
+  suggestedFollowupScript: string;
+}
+
+export interface AdminControlCenterSnapshot {
+  todayFollowups: AdminControlCenterMetric;
+  todayRechecks: AdminControlCenterMetric;
+  todayReviews: AdminControlCenterMetric;
+  weeklyHighIntent: AdminControlCenterMetric;
+  weeklyBatchStatus: AdminControlCenterMetric;
+  todayModelCost: AdminControlCenterMetric;
+  quickLinks: Array<{ href: string; title: string; detail: string }>;
+  followupItems: AdminControlCenterQueueItem[];
+  recheckItems: AdminControlCenterQueueItem[];
+  reviewItems: AdminControlCenterQueueItem[];
+  highIntentItems: AdminControlCenterQueueItem[];
+  studentChoices: Array<{ studentId: number; studentName: string; parentName: string }>;
+  selectedStudent: AdminControlCenterStudentDetail | null;
+  selectedStudentId: number | null;
+}
 export interface EvidenceTimelineNode {
   id: string;
   entityId: number | null;
@@ -550,4 +618,3 @@ export interface EvidenceTimelineDetail {
   recentEventSummary: string[];
   nodes: EvidenceTimelineNode[];
 }
-

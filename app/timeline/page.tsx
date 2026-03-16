@@ -1,4 +1,4 @@
-﻿export const dynamic = "force-dynamic";
+export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { ContinueTrackingLink } from "@/components/continue-tracking-link";
@@ -154,7 +154,7 @@ export default async function TimelinePage() {
             <p className="mt-3 text-sm leading-7 text-slate">如果你想看的不是“这道题今天对没对”，而是“这类问题到底稳没稳”，那就顺着这条时间轴继续追 4 周。这样每次变化都有证据，不会只凭感觉判断。</p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <ContinueTrackingLink href={detail.priorityRecheckTaskId ? `/recheck/${detail.priorityRecheckTaskId}` : "/upload"} diagnosisId={detail.latestDiagnosisId} eventValue="timeline-to-recheck" className="rounded-2xl bg-ink px-5 py-3 text-sm font-semibold text-white">继续追踪 4 周</ContinueTrackingLink>
+            <ContinueTrackingLink href={`/continue-tracking?from=timeline${detail.latestDiagnosisId ? `&diagnosisId=${detail.latestDiagnosisId}` : ""}${detail.priorityRecheckTaskId ? `&taskId=${detail.priorityRecheckTaskId}` : ""}`} diagnosisId={detail.latestDiagnosisId} eventValue="timeline-to-offer" className="rounded-2xl bg-ink px-5 py-3 text-sm font-semibold text-white">继续追踪 4 周</ContinueTrackingLink>
             <Link href={detail.latestWeeklyReportId ? `/weekly-report/${detail.latestWeeklyReportId}` : "/dashboard"} className="rounded-2xl border border-line bg-white px-5 py-3 text-sm font-semibold text-ink">回看这周周报</Link>
           </div>
         </div>

@@ -1,4 +1,4 @@
-﻿import { getDb, getLatestWeeklyReport, getPrimaryStudentId } from "@/lib/db";
+import { getDb, getLatestWeeklyReport, getPrimaryStudentId } from "@/lib/db";
 import { appendAdminActionLog, ensureAdminSchema } from "@/lib/db/admin";
 import { ensureP25Schema, runWeeklyBatchForAllStudents } from "@/lib/db/p25";
 import { getRecommendedSkillAssetByDiagnosis, getStudentMemorySummary } from "@/lib/db/product";
@@ -762,5 +762,3 @@ export function getEvidenceTimelineDetail(studentId = getPrimaryStudentId()): Ev
     nodes: toTimelineNodes(studentId)
   };
 }
-
-
