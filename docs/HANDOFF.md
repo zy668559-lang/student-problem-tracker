@@ -16,36 +16,38 @@ When starting the next round, read in this order:
 
 - Branch: `feature/mvp-init`
 - Product baseline: A1-A6 landed
-- Membership system: real state management is in place
+- A6 status: completed
 - Latest verification baseline:
   - `npm run typecheck`: passed
   - `npm run build`: passed
   - `npm exec playwright test`: passed (`27 passed`)
 
-## Current Product Snapshot
+## A6 Completion Snapshot
 
-- Parent/student/admin shell is in place.
-- Multi-student isolation is in place.
-- Recheck chain, evidence timeline, followup funnel, continue-tracking page, and control center are in place.
-- Membership is no longer presentation-only; it now has real per-student state, benefits, admin manual management, and logs.
+- Real membership state model is in place.
+- Membership capability gating is real, not only copy-level.
+- Student home, parent overview, membership page, continue-tracking page, and timeline already follow membership state.
+- Admin manual membership management and logs are in place.
+- Multi-student membership isolation is covered by e2e.
+
+## Recommended Next Round
+
+- A7: Heartbeat Lite
+
+Suggested implementation direction:
+
+- create a lightweight heartbeat rule layer on top of existing evidence, recheck, weekly report, and membership signals
+- add a heartbeat hit-event layer so the system knows when a student has entered a heartbeat-worthy state
+- connect heartbeat pending items to the control center instead of building a new admin shell
+- add dedicated A7 e2e
 
 ## Constraints Still In Force
 
 - Do not build official payment / subscription charging yet.
 - Do not introduce worker / cron yet.
-- Do not rebuild admin base, role shell, recheck base, or permission base.
+- Do not do large-scale base-layer refactor.
+- Do not redo existing role shell or site shell.
 - Keep one primary objective per round.
-
-## Recommended Next Round
-
-- Candidate: A7 Heartbeat Lite
-
-Suggested direction:
-
-- build a lightweight recurring heartbeat layer
-- keep it student-scoped
-- make it consume existing evidence / recheck / membership signals
-- do not expand into billing or infrastructure work
 
 ## Operating Rule
 

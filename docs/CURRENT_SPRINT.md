@@ -1,45 +1,38 @@
 # Current Sprint
 
 Last updated: 2026-03-16
-Sprint type: workflow switch round
+Sprint type: feature round
 
 ## This Round Is
 
-This is not a feature-development round.
-
-This round exists to switch the repository into a fixed, document-driven workflow so future development no longer depends on screenshots or out-of-band handoff notes.
+This round is the A7 implementation round.
 
 ## Main Goal
 
-Create a single-source repository workflow baseline:
+Build A7 Heartbeat Lite as the only primary development target.
 
-- project stage is documented
-- sprint scope is documented
-- key decisions are documented
-- next-round handoff is documented
-- OpenClaw adaptation is documented
-- local AGENTS rules are documented
-- missing policy skills are documented
+Heartbeat Lite should focus on:
+
+- heartbeat rule layer
+- heartbeat hit-event layer
+- control-center pending-item linkage
+- dedicated A7 end-to-end acceptance
 
 ## Explicitly Forbidden In This Round
 
-- No new product feature scope.
-- No payment / subscription implementation.
-- No worker / cron work.
-- No rebuild of admin base, membership base, role shell, recheck base, or multi-student base.
-- No opportunistic UI redesign.
+- Do not build official payment or subscription charging.
+- Do not introduce standalone worker or cron.
+- Do not do large-scale base-layer data refactor.
+- Do not redo existing role-shell pages or site shell.
+- Do not bundle unrelated product work into the same round.
 
 ## Done Means
 
-- `docs/PROJECT_STATUS.md` is current through A6.
-- `docs/OPENCLAW_ADAPTATION.md` clearly states adopted / deferred / excluded parts.
-- `docs/DECISIONS.md` records current strategic choices.
-- `docs/HANDOFF.md` is updated for the next round.
-- local `AGENTS.md` exists and defines the default repo workflow.
-- required policy files under `skills/` exist or are updated.
-- `npm run typecheck`, `npm run build`, `npm exec playwright test` all pass.
-- changes are committed and pushed to `feature/mvp-init` on both remotes.
-
-## Next Candidate After This Round
-
-- A7: Heartbeat Lite
+- Heartbeat rule layer exists and is documented in code and policy.
+- Heartbeat hit-event layer exists and can mark when a student hits a heartbeat-worthy condition.
+- Admin/control-center pending items can see and consume heartbeat-related signals.
+- Dedicated A7 Playwright coverage exists.
+- `npm run typecheck` passes.
+- `npm run build` passes.
+- `npm exec playwright test` passes.
+- Round handoff is updated and feature branch is pushed to both remotes.
