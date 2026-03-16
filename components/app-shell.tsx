@@ -7,17 +7,30 @@ import { StudentSwitcher } from "@/components/student-switcher";
 import type { AppSession, StudentOption } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-const parentNavItems = [
-  { href: "/student-home", label: "孩子首页" },
-  { href: "/parent-overview", label: "家长总览" },
-  { href: "/membership", label: "会员分层" },
-  { href: "/dashboard", label: "总览" },
-  { href: "/upload", label: "上传" },
-  { href: "/subject/math", label: "数学模块" },
-  { href: "/subject/english", label: "英语模块" },
-  { href: "/review-queue", label: "审核台" },
-  { href: "/timeline", label: "证据时间轴" }
-];
+const parentNavGroups = [
+  {
+    title: "家长视角",
+    items: [
+      { href: "/parent-overview", label: "家长总览" },
+      { href: "/membership", label: "会员分层" }
+    ]
+  },
+  {
+    title: "学生视角",
+    items: [
+      { href: "/student-home", label: "孩子首页" },
+      { href: "/subject/math", label: "数学模块" },
+      { href: "/subject/english", label: "英语模块" }
+    ]
+  },
+  {
+    title: "系统运营",
+    items: [
+      { href: "/upload", label: "上传" },
+      { href: "/timeline", label: "证据时间轴" }
+    ]
+  }
+] as const;
 
 const adminNavItems = [
   { href: "/admin", label: "后台总览" },
@@ -28,7 +41,7 @@ const adminNavItems = [
   { href: "/admin/recheck-tasks", label: "复检任务" },
   { href: "/admin/followups", label: "跟进漏斗" },
   { href: "/admin/memberships", label: "会员状态" }
-];
+] as const;
 
 export function AppShell({
   children,
@@ -52,7 +65,7 @@ export function AppShell({
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-accent/70">Student Problem Tracker</p>
           <h1 className="mt-3 text-2xl font-semibold text-ink">问题诊断与变化追踪</h1>
-          <p className="mt-3 text-sm leading-6 text-slate">后台只盯三件事：问题、动作、变化。</p>
+          <p className="mt-3 text-sm leading-6 text-slate">这一侧只帮你分清三件事：谁在看，先做什么，接下来去哪。</p>
         </div>
 
         <div className="mt-6 space-y-4">
@@ -62,35 +75,42 @@ export function AppShell({
             <p className="mt-3 text-sm font-semibold text-ink">{isAdmin ? "管理员账号" : "家长账号"}</p>
             <p className="mt-2 text-sm leading-6 text-slate">
               {isAdmin
-                ? "管理员能进运营后台，操作也都会留痕。"
-                : "这个账号下面的孩子会分开看数据，不会把上传、记忆和周报混在一起。"}
+                ? "管理员只看运营处理，不改前台角色壳。"
+                : "当前账号下的孩子会按 student_id 分开看，上传、周报、时间轴和会员状态都不会串线。"}
             </p>
           </div>
         </div>
 
         {!isAdmin ? (
-          <nav className="mt-8 space-y-2">
-            {parentNavItems.map((item) => {
-              const active = pathname.startsWith(item.href);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "flex items-center rounded-2xl px-4 py-3 text-sm font-medium transition",
-                    active ? "bg-ink text-white shadow-lg shadow-ink/10" : "text-slate hover:bg-mist hover:text-ink"
-                  )}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
+          <div className="mt-8 space-y-6">
+            {parentNavGroups.map((group) => (
+              <div key={group.title}>
+                <p className="px-1 text-xs font-semibold uppercase tracking-[0.24em] text-accent/70">{group.title}</p>
+                <nav className="mt-3 space-y-2">
+                  {group.items.map((item) => {
+                    const active = pathname.startsWith(item.href);
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={cn(
+                          "flex items-center rounded-2xl px-4 py-3 text-sm font-medium transition",
+                          active ? "bg-ink text-white shadow-lg shadow-ink/10" : "text-slate hover:bg-mist hover:text-ink"
+                        )}
+                      >
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                </nav>
+              </div>
+            ))}
+          </div>
         ) : null}
 
         {isAdmin ? (
           <div className="mt-8 border-t border-line pt-6">
-            <p className="px-4 text-xs font-semibold uppercase tracking-[0.24em] text-accent/70">运营后台</p>
+            <p className="px-4 text-xs font-semibold uppercase tracking-[0.24em] text-accent/70">系统运营</p>
             <nav className="mt-3 space-y-2">
               {adminNavItems.map((item) => {
                 const active = pathname.startsWith(item.href);

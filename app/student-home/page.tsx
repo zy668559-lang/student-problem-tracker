@@ -6,6 +6,55 @@ import { SectionCard } from "@/components/section-card";
 import { getStudentHomeSnapshot } from "@/lib/db/a5";
 import { getActiveStudentId, getServerSession } from "@/lib/session";
 
+const toneClasses = {
+  red: {
+    chip: "bg-rose/12 text-rose border-rose/20",
+    fill: "bg-rose",
+    text: "当前最卡"
+  },
+  orange: {
+    chip: "bg-[#f59e0b]/12 text-[#b45309] border-[#f59e0b]/25",
+    fill: "bg-[#f59e0b]",
+    text: "还没稳"
+  },
+  blue: {
+    chip: "bg-sky-100 text-sky-700 border-sky-200",
+    fill: "bg-sky-500",
+    text: "本周推进中"
+  },
+  green: {
+    chip: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    fill: "bg-emerald-500",
+    text: "已稳"
+  },
+  gray: {
+    chip: "bg-mist text-slate border-line",
+    fill: "bg-slate/35",
+    text: "弱信息"
+  }
+} as const;
+
+function renderStateRail(tone: keyof typeof toneClasses) {
+  const activeIndex = {
+    red: 0,
+    orange: 1,
+    blue: 2,
+    green: 3,
+    gray: -1
+  }[tone];
+
+  return (
+    <div className="grid grid-cols-4 gap-2">
+      {[0, 1, 2, 3].map((index) => (
+        <div
+          key={index}
+          className={`h-2 rounded-full ${index === activeIndex ? toneClasses[tone].fill : "bg-mist"}`}
+        />
+      ))}
+    </div>
+  );
+}
+
 export default async function StudentHomePage() {
   const session = await getServerSession();
   const studentId = getActiveStudentId(session);
@@ -14,59 +63,75 @@ export default async function StudentHomePage() {
   return (
     <div className="space-y-6">
       <section className="rounded-panel border border-white/70 bg-white/90 p-6 shadow-panel sm:p-8" data-testid="student-home-hero">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-4xl">
             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent/70">Student Home</p>
-            <h1 className="mt-3 text-3xl font-semibold text-ink">{snapshot.studentName}，今天先顺着这条线往下练。</h1>
+            <h1 className="mt-3 text-3xl font-semibold text-ink">{snapshot.studentName}，今天先把这一条做顺。</h1>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-slate">{snapshot.heroSummary}</p>
             <p className="mt-3 text-sm leading-6 text-slate">
               {snapshot.grade ? `${snapshot.grade}` : "年级待补"}{snapshot.school ? ` / ${snapshot.school}` : ""}
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Badge tone="rose">主卡点</Badge>
-            <Badge tone="gold">本周先做</Badge>
+            <Badge tone="rose">今天先练</Badge>
+            <Badge tone="gold">本周重点</Badge>
             <Badge tone={snapshot.membership.tone}>{snapshot.membership.tierLabel}</Badge>
           </div>
         </div>
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
-        <SectionCard title="当前最主要卡点" subtitle="先看卡哪，不急着铺太多。">
-          <p className="text-base leading-8 text-ink">{snapshot.currentBlockPoint}</p>
+      <div className="grid gap-4 xl:grid-cols-4">
+        <SectionCard title="今天先练这个" subtitle="先做一条，不换线。">
+          <p className="text-lg font-semibold text-ink">{snapshot.thisWeekAction}</p>
+          <p className="mt-3 text-sm leading-6 text-slate">今天先做顺，不贪多。</p>
         </SectionCard>
-        <SectionCard title="本周先做什么" subtitle="这周先做一条，别分心。">
-          <p className="text-base leading-8 text-ink">{snapshot.thisWeekAction}</p>
+        <SectionCard title="最近一次结果" subtitle="只说这次有没有往前。">
+          <p className="text-lg font-semibold text-ink">{snapshot.latestRecheckResult}</p>
+          <p className="mt-3 text-sm leading-6 text-slate">先看变化，再看解释。</p>
         </SectionCard>
-        <SectionCard title="最近一次复检结果" subtitle="有起色还是还没稳，这里只说一句。">
-          <p className="text-base leading-8 text-ink">{snapshot.latestRecheckResult}</p>
+        <SectionCard title="本周重点" subtitle="这一周就盯这一条。">
+          <p className="text-lg font-semibold text-ink">{snapshot.currentBlockPoint}</p>
+          <p className="mt-3 text-sm leading-6 text-slate">主卡点先不换，压住再说。</p>
         </SectionCard>
-        <SectionCard title="本周变化一句话" subtitle="就一句，先看方向对不对。">
-          <p className="text-base leading-8 text-ink">{snapshot.weeklyOneLiner}</p>
-        </SectionCard>
-        <SectionCard title="下轮优先级" subtitle="下一步先抓这一条。">
-          <p className="text-base leading-8 text-ink">{snapshot.nextPriority}</p>
-        </SectionCard>
-        <SectionCard title="当前会员状态" subtitle="先把边界看明白，再决定要不要往下走。">
-          <div className="space-y-3">
-            <div className="flex flex-wrap gap-3">
-              <Badge tone={snapshot.membership.tone}>{snapshot.membership.tierLabel}</Badge>
-              <Badge tone="gold">{snapshot.membership.statusLabel}</Badge>
-            </div>
-            <p className="text-base leading-8 text-ink">{snapshot.membership.label}</p>
-            <p className="text-sm leading-7 text-slate">{snapshot.membership.detail}</p>
-          </div>
+        <SectionCard title="下次复检什么" subtitle="下轮回来就看这一项。">
+          <p className="text-lg font-semibold text-ink">{snapshot.nextPriority}</p>
+          <p className="mt-3 text-sm leading-6 text-slate">下次先回头看它稳没稳。</p>
         </SectionCard>
       </div>
+
+      <section className="rounded-panel border border-white/70 bg-white/90 p-6 shadow-panel sm:p-8">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent/70">Main Chart</p>
+            <h2 className="mt-2 text-2xl font-semibold text-ink">今天先做什么，一眼看懂</h2>
+            <p className="mt-2 text-sm leading-6 text-slate">只用 4 档状态条，不做假分数。</p>
+          </div>
+          <p className="text-sm leading-6 text-slate">{snapshot.weeklyOneLiner}</p>
+        </div>
+
+        <div className="mt-6 grid gap-4 lg:grid-cols-3">
+          {snapshot.studentFocusChart.map((item) => {
+            const tone = toneClasses[item.tone];
+            return (
+              <article key={item.label} className="rounded-3xl border border-line bg-mist/45 p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-base font-semibold text-ink">{item.label}</p>
+                  <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${tone.chip}`}>{tone.text}</span>
+                </div>
+                <p className="mt-3 text-sm leading-7 text-ink">{item.detail}</p>
+                <div className="mt-4">{renderStateRail(item.tone)}</div>
+              </article>
+            );
+          })}
+        </div>
+      </section>
 
       <section className="rounded-panel border border-accent/20 bg-accent/10 p-6 shadow-panel sm:p-8" data-testid="student-home-practice-card">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-3xl">
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent/70">Practice</p>
-            <h2 className="mt-3 text-2xl font-semibold text-ink">今天先练这个入口</h2>
-            <p className="mt-3 text-sm leading-7 text-slate">
-              先别来回换线。你今天就照着这一步做：{snapshot.thisWeekAction}
-            </p>
+            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent/70">Action</p>
+            <h2 className="mt-3 text-2xl font-semibold text-ink">今天就照这一步练。</h2>
+            <p className="mt-3 text-sm leading-7 text-slate">别来回换题。你今天先把“{snapshot.thisWeekAction}”做顺。</p>
           </div>
           <Link
             href={snapshot.practiceHref}
@@ -78,23 +143,23 @@ export default async function StudentHomePage() {
         </div>
       </section>
 
-      <SectionCard title="顺手就能接下去的入口" subtitle="孩子自己能点，家长也看得懂。">
+      <SectionCard title="顺手就能接下去的入口" subtitle="保留少量入口，孩子和家长都看得懂。">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Link href="/timeline" className="rounded-3xl border border-line bg-white px-5 py-5">
             <p className="text-lg font-semibold text-ink">证据时间轴</p>
-            <p className="mt-2 text-sm leading-6 text-slate">{snapshot.membership.canSeeTimeline ? "把问题、动作、变化一口气串起来看。" : "这条从自助会员开始开放；现在先看清这次主问题。"}</p>
+            <p className="mt-2 text-sm leading-6 text-slate">{snapshot.membership.canSeeTimeline ? "把问题、动作和变化顺着看。" : "这一项从自助会员开始开放。"}</p>
           </Link>
           <Link href="/parent-overview" className="rounded-3xl border border-line bg-mist px-5 py-5">
             <p className="text-lg font-semibold text-ink">家长总览</p>
-            <p className="mt-2 text-sm leading-6 text-slate">让家长一眼知道这周先盯谁、盯哪一步。</p>
+            <p className="mt-2 text-sm leading-6 text-slate">让家长一眼知道这周先盯哪一步。</p>
           </Link>
           <Link href="/membership" className="rounded-3xl border border-line bg-white px-5 py-5">
             <p className="text-lg font-semibold text-ink">会员分层</p>
-            <p className="mt-2 text-sm leading-6 text-slate">先看边界，再决定要不要继续追。</p>
+            <p className="mt-2 text-sm leading-6 text-slate">先看差异，再决定要不要继续追。</p>
           </Link>
           <Link href={snapshot.continueTrackingHref} className="rounded-3xl border border-accent/20 bg-accent/10 px-5 py-5">
             <p className="text-lg font-semibold text-ink">{snapshot.membership.tier === "trial" ? "申请开通自助会员" : snapshot.membership.tier === "self_service" ? "想升级陪跑会员" : "继续按陪跑节奏走"}</p>
-            <p className="mt-2 text-sm leading-6 text-slate">{snapshot.membership.tier === "trial" ? "要继续拿周报、自动复检和时间轴，就从这里往下接。" : snapshot.membership.tier === "self_service" ? "如果最怕老师什么时候该下场，就从这里问陪跑。" : "这条线已经在陪跑里了，继续顺着这周主线走。"}</p>
+            <p className="mt-2 text-sm leading-6 text-slate">{snapshot.membership.tier === "trial" ? "要继续拿周报、自动复检和时间轴，就从这里接下去。" : snapshot.membership.tier === "self_service" ? "如果最怕反复，下一步就问陪跑。" : "这条线已经在陪跑里了，继续按这周主线走。"}</p>
           </Link>
         </div>
       </SectionCard>

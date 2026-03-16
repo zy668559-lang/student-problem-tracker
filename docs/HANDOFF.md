@@ -1,6 +1,6 @@
-﻿# Handoff
+# Handoff
 
-Last updated: 2026-03-16
+Last updated: 2026-03-17
 
 ## Read First
 
@@ -11,53 +11,56 @@ When starting the next round, read in this order:
 3. `docs/HANDOFF.md`
 4. `docs/OPENCLAW_ADAPTATION.md`
 5. `docs/DECISIONS.md`
+6. `docs/U1_VISUAL_INFO_REDUCTION.md`
 
 ## Current Repository State
 
 - Branch: `feature/mvp-init`
-- Product baseline: A1-A6 landed
-- Current target: A7 Heartbeat Lite
-- A6 status: completed
+- Product baseline: A1-A7 landed
+- Current target: U1 visual and information reduction
+- U1 status: implementation completed for parent overview, student home, membership page, and left navigation grouping
 - Latest verification baseline:
   - `npm run typecheck`: passed
   - `npm run build`: passed
-  - `npm exec playwright test`: passed (`27 passed`)
+  - `npm exec playwright test`: passed (`30 passed`)
 
-## A6 Completion Snapshot
+## U1 Completion Snapshot
 
-- Real membership state model is in place.
-- Membership capability gating is real, not only copy-level.
-- Student home, parent overview, membership page, continue-tracking page, and timeline already follow membership state.
-- Admin manual membership management and logs are in place.
-- Multi-student membership isolation is covered by e2e.
-
-## Recommended Next Round
-
-- A7: Heartbeat Lite
-
-Suggested implementation direction:
-
-- create a lightweight heartbeat rule layer on top of existing evidence, recheck, weekly report, and membership signals
-- add a heartbeat hit-event layer so the system knows when a student has entered a heartbeat-worthy state
-- support at least inactivity, overdue recheck, repeated unstable error, and undecided parent followup rules
-- connect heartbeat pending items to the control center instead of building a new admin shell
-- support admin manual run and lightweight in-app refresh only
-- add dedicated A7 e2e
-
-Expected A7 output:
-
-- explicit heartbeat rules with inspectable config
-- per-student / per-parent heartbeat events without cross-student leakage
-- control center cards for today reminder / recheck / followup heartbeat items
-- no standalone worker/cron and no payment work
+- Parent overview first screen is reduced to four first-level blocks:
+  - 当前最卡
+  - 这周先做
+  - 还没稳的一步
+  - 继续追踪理由
+- Student home first screen is reduced to four first-level blocks:
+  - 今天先练这个
+  - 最近一次结果
+  - 本周重点
+  - 下次复检什么
+- Membership page now centers on tier differences instead of long-form explanation.
+- Left navigation is regrouped into parent view, student view, and system / operations.
+- Charts follow the U1 rule set:
+  - parent overview main chart uses four-state horizontal rails
+  - parent overview secondary chart uses 4-week change bars
+  - membership page main chart uses capability x tier comparison
+- Existing role-shell and membership e2e anchors remain intact.
+- No backend contract, API route, membership base table, or multi-student substrate was changed.
 
 ## Constraints Still In Force
 
 - Do not build official payment / subscription charging yet.
 - Do not introduce worker / cron yet.
 - Do not do large-scale base-layer refactor.
-- Do not redo existing role shell or site shell.
-- Keep one primary objective per round.
+- Do not change backend contracts for role shell pages unless a future sprint explicitly says so.
+- Keep multi-student isolation and role isolation intact.
+
+## Recommended Next Round
+
+- Next round should be defined explicitly before coding.
+- If continuing product refinement, prefer:
+  - mobile and small-screen polish for U1 surfaces
+  - visual consistency cleanup for secondary pages
+  - copy convergence on remaining legacy pages
+- If switching to a new capability round, write the boundary into `docs/CURRENT_SPRINT.md` first.
 
 ## Operating Rule
 
@@ -67,4 +70,3 @@ Before ending any future round:
 - update `docs/PROJECT_STATUS.md` if stage truth changed
 - run `typecheck`, `build`, and full `playwright`
 - commit and push feature branch to both remotes
-

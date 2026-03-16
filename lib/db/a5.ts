@@ -8,6 +8,8 @@ import { getPriorityRecheckTask } from "@/lib/db/p25";
 import type { MembershipTier, MembershipTierStatus, TrackingStatus } from "@/lib/types";
 
 type BadgeTone = "accent" | "gold" | "rose" | "ink";
+type UiStateTone = "red" | "orange" | "blue" | "green" | "gray";
+type CapabilityLevel = "off" | "limited" | "on" | "high";
 
 export interface MembershipStatusCard {
   label: string;
@@ -23,6 +25,26 @@ export interface MembershipStatusCard {
   canUseTeacherCorrection: boolean;
 }
 
+export interface StateBarItem {
+  label: string;
+  detail: string;
+  tone: UiStateTone;
+}
+
+export interface WeeklyTrendItem {
+  label: string;
+  tone: UiStateTone;
+  value: number;
+  note: string;
+}
+
+export interface CapabilityCompareRow {
+  label: string;
+  trial: CapabilityLevel;
+  selfService: CapabilityLevel;
+  coaching: CapabilityLevel;
+}
+
 export interface StudentRoleShellSummary {
   studentId: number;
   studentName: string;
@@ -34,6 +56,7 @@ export interface StudentRoleShellSummary {
   weeklyOneLiner: string;
   nextPriority: string;
   unstableStep: string;
+  continueTrackingReason: string;
   currentStatus: string;
   membership: MembershipStatusCard;
   latestDiagnosisId: number | null;
@@ -41,6 +64,9 @@ export interface StudentRoleShellSummary {
   priorityRecheckTaskId: number | null;
   continueTrackingHref: string;
   practiceHref: string;
+  parentMainChart: StateBarItem[];
+  studentFocusChart: StateBarItem[];
+  weeklyTrend: WeeklyTrendItem[];
 }
 
 export interface StudentHomeSnapshot extends StudentRoleShellSummary {
@@ -77,12 +103,14 @@ export interface MembershipPageSnapshot {
   latestDiagnosisId: number | null;
   continueTrackingHref: string;
   tiers: MembershipTierCard[];
+  capabilityRows: CapabilityCompareRow[];
 }
 
 function parseObject<T>(value: string | null | undefined, fallback: T): T {
   if (!value) {
     return fallback;
   }
+
   try {
     return JSON.parse(value) as T;
   } catch {
@@ -110,7 +138,8 @@ function parseWeeklyPayload(studentId: number) {
     student_today_action: null as string | null,
     student_minimum_action: null as string | null,
     unstable_points: [] as string[],
-    next_priority: null as string | null
+    next_priority: null as string | null,
+    continue_tracking_reason: null as string | null
   });
 }
 
@@ -164,7 +193,7 @@ function getMembershipStatusCard(studentId: number): MembershipStatusCard {
 
   return {
     label: membership.summary,
-    detail: membership.benefitSummary[0] ?? "先顺着这条线继续看。",
+    detail: membership.benefitSummary[0] ?? "先把这一条主线接住。",
     tier: membership.membershipTier,
     tierStatus: membership.tierStatus,
     tierLabel: membership.membershipTier === "coaching" ? "陪跑会员" : membership.membershipTier === "self_service" ? "自助会员" : "试用",
@@ -177,6 +206,22 @@ function getMembershipStatusCard(studentId: number): MembershipStatusCard {
   };
 }
 
+function stateToneClass(status: string | null | undefined): UiStateTone {
+  if (!status) {
+    return "gray";
+  }
+  if (status === "stabilized") {
+    return "green";
+  }
+  if (status === "passed_once" || status === "improving") {
+    return "orange";
+  }
+  if (status === "recheck_due") {
+    return "blue";
+  }
+  return "gray";
+}
+
 function getCurrentStatusCopy(input: {
   trackingStatus: TrackingStatus;
   priorityTaskStatus?: string | null;
@@ -184,30 +229,30 @@ function getCurrentStatusCopy(input: {
   membership: MembershipStatusCard;
 }) {
   if (input.membership.tierStatus === "pending") {
-    return "这条会员申请已经递上去了。现在先按当前边界继续看，等后台确认后，长线权益才会一起生效。";
+    return "会员申请已经递上去了，先把这条线继续接着看。";
   }
 
   if (input.membership.tierStatus === "paused" || input.membership.tierStatus === "expired") {
-    return "这条会员状态现在先停住了。已有记录都在，但长线权益先不继续往下接。";
+    return "这条会员状态先停住了，但之前的证据线还在。";
   }
 
   if (input.trackingStatus === "active") {
-    return "这条现在已经在陪跑会员里，重点不是看会没会，是看稳没稳。";
+    return "现在重点不是会不会，是这条线到底稳没稳。";
   }
 
   if (input.trackingStatus === "intent") {
-    return "这条现在已经进自助会员节奏了，周报、自动复检和时间轴都会顺着主线接。";
+    return "这条已经进入持续追踪节奏了，接下来别断线。";
   }
 
   if (input.priorityTaskStatus === "stabilized") {
-    return "这周有一块先算稳住了，但别一下全松。";
+    return "这周有一块算稳住了，但别一下全松。";
   }
 
   if (input.priorityTaskStatus === "passed_once" || input.priorityTaskStatus === "improving") {
-    return "这条有起色了，但还没到能完全放心的时候。";
+    return "开始有变化了，但还没到能放心的时候。";
   }
 
-  return `这周先别贪多，最该盯的还是：${input.unstableStep}`;
+  return `这周先别贪多，先盯住“${input.unstableStep}”。`;
 }
 
 function buildContinueTrackingHref(studentId: number, diagnosisId: number | null, taskId: number | null, source: string) {
@@ -223,6 +268,139 @@ function buildContinueTrackingHref(studentId: number, diagnosisId: number | null
   }
 
   return diagnosisId ? `/continue-tracking?${query.toString()}` : `/membership?student=${studentId}`;
+}
+
+function startOfWeek(offsetWeeks: number) {
+  const now = new Date();
+  const start = new Date(now);
+  const day = (start.getDay() + 6) % 7;
+  start.setDate(start.getDate() - day - offsetWeeks * 7);
+  start.setHours(0, 0, 0, 0);
+  return start;
+}
+
+function formatWeekLabel(value: Date) {
+  return `${String(value.getMonth() + 1).padStart(2, "0")}/${String(value.getDate()).padStart(2, "0")}`;
+}
+
+function getWeeklyTrend(studentId: number): WeeklyTrendItem[] {
+  const db = getDb();
+  const rows: WeeklyTrendItem[] = [];
+
+  for (let offset = 3; offset >= 0; offset -= 1) {
+    const start = startOfWeek(offset);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 7);
+
+    const row = db.prepare(`
+      SELECT
+        SUM(CASE WHEN change_type IN ('stabilized') THEN 1 ELSE 0 END) AS stabilized_count,
+        SUM(CASE WHEN change_type IN ('improved', 'approved', 'recheck_progress') THEN 1 ELSE 0 END) AS forward_count,
+        SUM(CASE WHEN change_type IN ('unstable', 'rejected', 'detected') THEN 1 ELSE 0 END) AS warning_count
+      FROM change_logs
+      WHERE student_id = ?
+        AND datetime(created_at) >= datetime(?)
+        AND datetime(created_at) < datetime(?)
+    `).get(studentId, start.toISOString(), end.toISOString()) as {
+      stabilized_count: number | null;
+      forward_count: number | null;
+      warning_count: number | null;
+    };
+
+    const stabilizedCount = Number(row.stabilized_count ?? 0);
+    const forwardCount = Number(row.forward_count ?? 0);
+    const warningCount = Number(row.warning_count ?? 0);
+    const total = stabilizedCount + forwardCount + warningCount;
+    const tone: UiStateTone = stabilizedCount > 0
+      ? "green"
+      : forwardCount > warningCount && total > 0
+        ? "blue"
+        : warningCount > 0
+          ? offset === 0 ? "red" : "orange"
+          : "gray";
+
+    rows.push({
+      label: formatWeekLabel(start),
+      tone,
+      value: Math.min(Math.max(total, 1), 4),
+      note: stabilizedCount > 0
+        ? `稳住 ${stabilizedCount} 项`
+        : forwardCount > warningCount && total > 0
+          ? `这周在往前推`
+          : warningCount > 0
+            ? `这周还有反复`
+            : "还没形成新变化"
+    });
+  }
+
+  return rows;
+}
+
+function buildParentMainChart(input: {
+  currentBlockPoint: string;
+  thisWeekAction: string;
+  unstableStep: string;
+  latestRecheckResult: string;
+  priorityTaskStatus: string | null;
+}): StateBarItem[] {
+  return [
+    {
+      label: "当前最卡",
+      detail: input.currentBlockPoint,
+      tone: "red"
+    },
+    {
+      label: "这周推进",
+      detail: input.thisWeekAction,
+      tone: "blue"
+    },
+    {
+      label: "还没稳",
+      detail: input.unstableStep,
+      tone: "orange"
+    },
+    {
+      label: "复检状态",
+      detail: input.latestRecheckResult,
+      tone: stateToneClass(input.priorityTaskStatus)
+    }
+  ];
+}
+
+function buildStudentFocusChart(input: {
+  thisWeekAction: string;
+  latestRecheckResult: string;
+  nextPriority: string;
+  priorityTaskStatus: string | null;
+}): StateBarItem[] {
+  return [
+    {
+      label: "今天先练",
+      detail: input.thisWeekAction,
+      tone: "red"
+    },
+    {
+      label: "本周重点",
+      detail: input.nextPriority,
+      tone: "blue"
+    },
+    {
+      label: "稳住情况",
+      detail: input.latestRecheckResult,
+      tone: stateToneClass(input.priorityTaskStatus)
+    }
+  ];
+}
+
+function getCapabilityRows(): CapabilityCompareRow[] {
+  return [
+    { label: "连续复检", trial: "off", selfService: "on", coaching: "high" },
+    { label: "每周周报", trial: "off", selfService: "on", coaching: "high" },
+    { label: "证据时间轴", trial: "off", selfService: "on", coaching: "high" },
+    { label: "定向素材", trial: "off", selfService: "on", coaching: "high" },
+    { label: "老师纠偏", trial: "off", selfService: "off", coaching: "high" },
+    { label: "提醒力度", trial: "limited", selfService: "on", coaching: "high" }
+  ];
 }
 
 function buildStudentSummary(studentId: number): StudentRoleShellSummary {
@@ -241,32 +419,36 @@ function buildStudentSummary(studentId: number): StudentRoleShellSummary {
 
   const currentBlockPoint = normalize(
     timeline?.lastProblemSummary,
-    "这条主卡点我还在继续往一起收。"
+    "主卡点我先帮你收成这一条，先别分心。"
   );
   const unstableStep = normalize(
     timeline?.unstableItems[0] ?? offer?.unstableStep ?? weekly.unstable_points?.[0],
-    "这一步现在最怕看着会了，过两天又掉回去。"
+    "这一步最怕看着会了，过两天又掉回去。"
   );
   const thisWeekAction = normalize(
     latestDiagnosis?.student_today_action
       ?? weekly.student_today_action
       ?? latestDiagnosis?.student_minimum_action
       ?? priorityTask?.nextActionType,
-    "这周先把最小动作做顺，别一下铺太多。"
+    "今天先把这一步练顺，不要一口气铺太多。"
   );
   const latestRecheckResult = normalize(
     latestDiagnosis?.recheck_summary ?? memory.recheck_status_summary,
     membership.canUseWeeklyReport
-      ? "这条还没到正式记稳的时候，先按这周主线继续盯。"
-      : "这轮还是基础体检结果，还没进入连续复检。"
+      ? "开始有变化了，但还得继续看。"
+      : "这轮先拿到一次清楚结果，再决定要不要继续追。"
   );
   const weeklyOneLiner = normalize(
     timeline?.currentChangeSummary ?? offer?.weeklyChange ?? weekly.parent_weekly_summary,
-    "这周不是完全没动静，是有一点起色，但还得接着看。"
+    "这周不是完全没动静，是有一点起色，但还没稳。"
   );
   const nextPriority = normalize(
     timeline?.nextPriority ?? offer?.nextPriority ?? latestDiagnosis?.next_priority ?? weekly.next_priority ?? memory.next_priority,
-    membership.canUseWeeklyReport ? "下轮还是先盯最爱反复的那一条。" : "如果要继续追，就先把这次主卡点顺着接下去。"
+    membership.canUseWeeklyReport ? "下轮还是先盯最爱反复的这一条。" : "如果要继续追，就先把这次主卡点顺着接下去。"
+  );
+  const continueTrackingReason = normalize(
+    offer?.continueTrackingReason ?? weekly.continue_tracking_reason ?? memory.next_priority,
+    "因为这条线开始有变化了，但还没到能放心松手的时候。"
   );
   const currentStatus = getCurrentStatusCopy({
     trackingStatus: membership.trackingStatus,
@@ -289,13 +471,28 @@ function buildStudentSummary(studentId: number): StudentRoleShellSummary {
     weeklyOneLiner,
     nextPriority,
     unstableStep,
+    continueTrackingReason,
     currentStatus,
     membership,
     latestDiagnosisId,
     latestWeeklyReportId: timeline?.latestWeeklyReportId ?? offer?.latestWeeklyReportId ?? null,
     priorityRecheckTaskId,
     continueTrackingHref,
-    practiceHref: priorityRecheckTaskId ? `/recheck/${priorityRecheckTaskId}` : latestDiagnosisId ? `/diagnosis/${latestDiagnosisId}` : "/upload"
+    practiceHref: priorityRecheckTaskId ? `/recheck/${priorityRecheckTaskId}` : latestDiagnosisId ? `/diagnosis/${latestDiagnosisId}` : "/upload",
+    parentMainChart: buildParentMainChart({
+      currentBlockPoint,
+      thisWeekAction,
+      unstableStep,
+      latestRecheckResult,
+      priorityTaskStatus: priorityTask?.status ?? null
+    }),
+    studentFocusChart: buildStudentFocusChart({
+      thisWeekAction,
+      latestRecheckResult,
+      nextPriority,
+      priorityTaskStatus: priorityTask?.status ?? null
+    }),
+    weeklyTrend: getWeeklyTrend(studentId)
   };
 }
 
@@ -304,7 +501,7 @@ export function getStudentHomeSnapshot(studentId = getPrimaryStudentId()): Stude
 
   return {
     ...summary,
-    heroSummary: `${summary.studentName} 这周先别东一榔头西一棒，顺着这一条线往下做最省力。`
+    heroSummary: `今天别换线，先把“${summary.thisWeekAction}”做顺。`
   };
 }
 
@@ -340,42 +537,43 @@ export function getMembershipPageSnapshot(studentId = getPrimaryStudentId()): Me
     membership: summary.membership,
     latestDiagnosisId: summary.latestDiagnosisId,
     continueTrackingHref: summary.continueTrackingHref,
+    capabilityRows: getCapabilityRows(),
     tiers: [
       {
         slug: "trial",
         title: "试用",
-        highlight: "先把主问题看清楚，不急着谈长期。",
+        highlight: "先看清主问题，不急着承诺长期。",
         gets: [
-          "只先做 1 次体检，先把主问题看清楚。",
-          "能拿到基础结果和这次先做什么，不用自己瞎猜。",
-          "这档先不给连续复检、时间轴和老师人工纠偏。"
+          "先看清孩子到底卡在哪。",
+          "知道这次先做什么，不再靠猜。",
+          "先不给连续复检、时间轴和老师纠偏。"
         ],
-        fits: "适合刚进来，先想看清孩子是不是卡在同一个点上的家长。",
-        difference: "这是起步层，只负责看明白，不负责把变化连续接 4 周。"
+        fits: "适合刚进来，先想看清这条问题线值不值得继续追的家长。",
+        difference: "这一档负责看明白，不负责把变化连续接四周。"
       },
       {
         slug: "self_service",
         title: "自助会员",
-        highlight: "你自己推进，我把主线和节奏给你接起来。",
+        highlight: "你自己推进，我把主线和节奏接起来。",
         gets: [
-          "可以周期上传、看周报、看证据时间轴，不再只看单次结果。",
-          "自动复检和定向素材推荐会跟着这条线继续往下跑。",
-          "家长每周都能知道下轮优先级和还没稳的那一步。"
+          "可以继续上传、看周报、看时间轴。",
+          "自动复检和定向素材会顺着同一条线往下接。",
+          "家长能每周看到下一步和还没稳的那一步。"
         ],
-        fits: "适合家长愿意自己盯执行，但希望系统把主线、节奏和证据先接稳。",
-        difference: "比试用多的是连续追踪视角，不再只看一次体检结论。"
+        fits: "适合愿意自己执行，但不想每周重新判断重点的家长。",
+        difference: "比试用多的是持续追踪，不再只看一次结果。"
       },
       {
         slug: "coaching",
         title: "陪跑会员",
-        highlight: "问题、动作、变化和老师人工纠偏都一起接上。",
+        highlight: "问题、动作、变化和老师纠偏一起接上。",
         gets: [
-          "复检、时间轴、周报和继续追踪会按一条线往下接。",
-          "老师人工纠偏、高优先级跟进和更紧的提醒会一起生效。",
-          "孩子打开就知道今天先练什么，家长也知道这周先盯哪一步。"
+          "复检、周报、时间轴和继续追踪一条线走到底。",
+          "老师人工纠偏和更紧的提醒会一起生效。",
+          "孩子知道今天先练什么，家长知道这周先盯哪一步。"
         ],
-        fits: "适合最担心回弹，想把 4 周变化真正盯住，还想让老师手动下场纠偏的家长。",
-        difference: "比自助会员多的是老师人工纠偏和更强的跟进力度，不只是继续自动追。"
+        fits: "适合最怕回弹、想把 4 周变化盯住，还希望老师下场纠偏的家长。",
+        difference: "比自助会员多的是老师下场和更强的跟进力度。"
       }
     ]
   };

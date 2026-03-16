@@ -1,56 +1,66 @@
-﻿# Current Sprint
+# Current Sprint
 
 Last updated: 2026-03-16
-Sprint type: feature round
+Sprint type: design-first product refinement round
 
 ## This Round Is
 
-This round is the A7 implementation round.
+This round is the U1 visual and information reduction round.
 
 ## Main Goal
 
-Build A7 Heartbeat Lite as the only primary development target.
+Turn the current product from functional data-heavy pages into clearer product-expression pages:
 
-Heartbeat Lite should focus on:
+- parent can understand the key issue within 5 seconds
+- student can know what to do first within 3 seconds
+- primary information is more obvious than secondary information
+- charts directly express problem / change / stability
 
-- heartbeat rule layer
-- heartbeat hit-event layer
-- control-center pending-item linkage
-- manual admin run + lightweight in-app trigger
-- dedicated A7 end-to-end acceptance
+## Only Do In This Round
 
-Minimum A7 rules for this round:
+1. Restructure parent overview page information hierarchy.
+2. Restructure student home page information hierarchy.
+3. Regroup left navigation by role perspective.
+4. Unify visual rules for cards, headings, summaries, buttons, badges, and charts.
+5. Produce structure docs and visual rules first, then enter implementation.
 
-- student inactivity: no upload for continuous N days
-- overdue recheck: recheck task due but not completed
-- repeated unstable error: repeated error tag keeps returning and is not stabilized
-- parent followup pending: evidence / continue-tracking signals happened but no decision yet
+## Page-Level Principles
 
-Minimum A7 event buckets for this round:
-
-- students to remind
-- students due for recheck
-- parents due for followup
-- operations attention items
+- One page, one center.
+- Conclusion first, explanation second.
+- Only keep four first-level information blocks per page.
+- Only keep one main chart per page, plus at most two small charts or status strips.
+- Reduce information first, reskin second.
+- Parent page should answer value; student page should answer action.
 
 ## Explicitly Forbidden In This Round
 
 - Do not build official payment or subscription charging.
-- Do not introduce standalone worker or cron.
-- Do not do large-scale base-layer data refactor.
-- Do not redo existing role-shell pages or site shell.
-- Do not bundle unrelated product work into the same round.
+- Do not introduce worker or cron.
+- Do not add new business logic.
+- Do not refactor base tables at scale.
+- Do not build multi-image joint diagnosis.
+- Do not do a site-wide visual overhaul.
+- Do not add complex animation or decorative motion.
 
 ## Done Means
 
-- Heartbeat rule layer exists and is documented in code and policy.
-- Heartbeat hit-event layer exists and can mark when a student hits a heartbeat-worthy condition.
-- Admin/control-center pending items can see and consume heartbeat-related signals.
-- Admin can manually run Heartbeat once inside the current app.
-- Heartbeat can also refresh from lightweight in-app triggers without worker/cron.
-- Dedicated A7 Playwright coverage exists.
-- `npm run typecheck` passes.
-- `npm run build` passes.
-- `npm exec playwright test` passes.
-- Round handoff is updated and feature branch is pushed to both remotes.
-
+- Parent overview first screen only keeps four first-level blocks:
+  - current biggest blocker
+  - what to do this week
+  - the still-unstable step
+  - why continued tracking still matters
+- Student home first screen only keeps four first-level blocks:
+  - do this first today
+  - latest result
+  - this week's focus
+  - next recheck target
+- Left navigation is grouped by:
+  - parent view
+  - student view
+  - system / operations
+- Each page keeps one main chart and at most two small charts.
+- Charts use a unified red / orange / blue / green status system.
+- Parent-facing and student-facing copy shifts to shorter Chen-teacher conversational style.
+- A structure doc, visual rule doc, and Codex execution plan exist before implementation.
+- After implementation, `npm run typecheck`, `npm run build`, and `npm exec playwright test` must pass.

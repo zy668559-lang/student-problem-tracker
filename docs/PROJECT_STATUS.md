@@ -1,15 +1,15 @@
-﻿# Project Status
+# Project Status
 
-Last updated: 2026-03-16
+Last updated: 2026-03-17
 Branch baseline: `feature/mvp-init`
 
 ## Current Summary
 
-- Product stage: local MVP with parent/student/admin three-side shell and real membership state management.
+- Product stage: local MVP with parent/student/admin three-side shell, real membership state management, and Heartbeat Lite.
 - Latest verification baseline:
   - `npm run typecheck`: passed
   - `npm run build`: passed
-  - `npm exec playwright test`: passed (`27 passed`)
+  - `npm exec playwright test`: passed (`30 passed`)
 - Remote branch status:
   - `github/feature/mvp-init`
   - `gitee/feature/mvp-init`
@@ -106,14 +106,18 @@ Branch baseline: `feature/mvp-init`
 - Parent overview page.
 - Membership tier page.
 - Clear linking between role shell pages, timeline, funnel, and continue-tracking entry.
+- U1 first-screen restructuring for parent overview and student home.
+- U1 navigation regrouping by parent / student / system view.
 
 ### Partially Completed
 
 - Membership page was initially presentation-only; it now depends on A6 for real status.
+- U1 only refactored the key role-shell surfaces, not every secondary page.
 
 ### Not Completed
 
 - No payment-backed subscription flow.
+- Secondary pages still need later visual convergence if U1 is extended.
 
 ### Explicitly Forbidden For Current Scope
 
@@ -130,6 +134,7 @@ Branch baseline: `feature/mvp-init`
 - Admin manual actions: open, extend, downgrade, pause.
 - Membership action logs with operator, before/after state, time, and note.
 - Page linkage across student home, parent overview, membership, continue-tracking, and timeline.
+- U1 membership page now explains tier differences with a capability comparison chart.
 
 ### Partially Completed
 
@@ -144,6 +149,24 @@ Branch baseline: `feature/mvp-init`
 
 - Do not add official payment / subscription system yet.
 
+## A7 Heartbeat Lite
+
+### Completed
+
+- Lightweight heartbeat rules and inspectable events.
+- Admin manual run and in-app trigger without standalone worker/cron.
+- Control-center pending linkage for reminder / recheck / followup queues.
+- Dedicated heartbeat e2e coverage.
+
+### Not Completed
+
+- No standalone cron / worker.
+- No dedicated heartbeat operations workbench yet.
+
+### Explicitly Forbidden For Current Scope
+
+- Do not expand Heartbeat into a full automation platform yet.
+
 ## Cross-Stage Forbidden Items
 
 - No official payment or subscription charging.
@@ -154,11 +177,6 @@ Branch baseline: `feature/mvp-init`
 
 ## Suggested Next Candidate
 
-- A7: Heartbeat Lite
-  - Goal direction: turn current evidence, membership, followup, and weekly rhythm into a lightweight recurring heartbeat layer without introducing payment or worker/cron.
-  - Planned scope:
-    - lightweight heartbeat rules
-    - inspectable heartbeat hit events
-    - control-center pending linkage
-    - admin manual run and in-app trigger only
-
+- Define the next round explicitly before coding.
+- If continuing design refinement, focus on mobile polish and secondary-page convergence.
+- If switching back to capability delivery, keep payment and worker/cron out unless the sprint says otherwise.
