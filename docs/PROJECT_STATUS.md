@@ -5,14 +5,15 @@ Branch baseline: `feature/mvp-init`
 
 ## Current Summary
 
-- Product stage: local MVP with parent/student/admin three-side shell, real membership state management, and Heartbeat Lite.
+- Product stage: local MVP with parent / student / admin shells, real membership state management, and Heartbeat Lite.
+- U1 visual and information reduction: completed.
 - Latest verification baseline:
   - `npm run typecheck`: passed
   - `npm run build`: passed
   - `npm exec playwright test`: passed (`30 passed`)
-- Remote branch status:
-  - `github/feature/mvp-init`
-  - `gitee/feature/mvp-init`
+- Latest remote status:
+  - `github/feature/mvp-init`: pushed
+  - `gitee/feature/mvp-init`: pushed
 
 ## A1 Core MVP
 
@@ -31,10 +32,6 @@ Branch baseline: `feature/mvp-init`
 
 - No heavy attachment preview or richer media evidence experience.
 
-### Explicitly Forbidden For Current Scope
-
-- Do not rebuild the diagnosis base or replace the current review pipeline.
-
 ## A2 Access / Admin Base
 
 ### Completed
@@ -51,10 +48,6 @@ Branch baseline: `feature/mvp-init`
 
 - No standalone customer-service / sales workflow system.
 
-### Explicitly Forbidden For Current Scope
-
-- Do not rebuild admin base or introduce a large new admin framework.
-
 ## A3 Multi-Student / Permission Isolation
 
 ### Completed
@@ -70,10 +63,6 @@ Branch baseline: `feature/mvp-init`
 ### Not Completed
 
 - No sub-roles such as sales, coach, reviewer, or operations specialist.
-
-### Explicitly Forbidden For Current Scope
-
-- Do not redo role architecture or redesign the permission substrate.
 
 ## A4 Recheck / Evidence / Conversion Ops
 
@@ -94,10 +83,6 @@ Branch baseline: `feature/mvp-init`
 - No worker / cron deployment.
 - No automated sales SOP or deep conversion experiments.
 
-### Explicitly Forbidden For Current Scope
-
-- Do not introduce standalone worker / cron in current phase.
-
 ## A5 Role Shell
 
 ### Completed
@@ -105,23 +90,19 @@ Branch baseline: `feature/mvp-init`
 - Student home page.
 - Parent overview page.
 - Membership tier page.
-- Clear linking between role shell pages, timeline, funnel, and continue-tracking entry.
-- U1 first-screen restructuring for parent overview and student home.
+- Clear linking between role-shell pages, timeline, funnel, and continue-tracking entry.
+- U1 first-screen restructuring for parent overview, student home, and membership page.
 - U1 navigation regrouping by parent / student / system view.
+- U1 chart semantics aligned to four-state bars, 4-week change bars, and tier comparison.
 
 ### Partially Completed
 
-- Membership page was initially presentation-only; it now depends on A6 for real status.
 - U1 only refactored the key role-shell surfaces, not every secondary page.
 
 ### Not Completed
 
 - No payment-backed subscription flow.
-- Secondary pages still need later visual convergence if U1 is extended.
-
-### Explicitly Forbidden For Current Scope
-
-- Do not redo the role shell or replace site navigation wholesale.
+- Secondary surfaces still need later visual convergence if U1 is extended into U1.1.
 
 ## A6 Membership State Management
 
@@ -129,11 +110,8 @@ Branch baseline: `feature/mvp-init`
 
 - Real membership state model per `student_id`.
 - Three tiers: `trial`, `self_service`, `coaching`.
-- State fields: `membership_tier`, `tier_status`, `effective_from`, `effective_to`, `benefit_flags`, `manual_override_reason`, `updated_at`.
 - Real benefit gating for upload allowance, recheck, weekly report, timeline, teacher correction, and CTA copy.
-- Admin manual actions: open, extend, downgrade, pause.
-- Membership action logs with operator, before/after state, time, and note.
-- Page linkage across student home, parent overview, membership, continue-tracking, and timeline.
+- Admin manual actions and membership action logs.
 - U1 membership page now explains tier differences with a capability comparison chart.
 
 ### Partially Completed
@@ -144,10 +122,6 @@ Branch baseline: `feature/mvp-init`
 ### Not Completed
 
 - No formal billing, payment, subscription settlement, invoice, or renewal mechanism.
-
-### Explicitly Forbidden For Current Scope
-
-- Do not add official payment / subscription system yet.
 
 ## A7 Heartbeat Lite
 
@@ -163,20 +137,14 @@ Branch baseline: `feature/mvp-init`
 - No standalone cron / worker.
 - No dedicated heartbeat operations workbench yet.
 
-### Explicitly Forbidden For Current Scope
+## Current Open Items
 
-- Do not expand Heartbeat into a full automation platform yet.
-
-## Cross-Stage Forbidden Items
-
-- No official payment or subscription charging.
+- U1 mobile polish and secondary-page convergence are not finished.
+- Demo stability still depends on whether the external real provider is healthy.
+- No official payment / subscription charging.
 - No standalone worker / cron.
-- No rebuild of admin base, role shell, recheck base, or multi-student base.
-- No large schema rewrite.
-- No direct work on `main`; keep work on feature branches.
 
 ## Suggested Next Candidate
 
-- Define the next round explicitly before coding.
-- If continuing design refinement, focus on mobile polish and secondary-page convergence.
-- If switching back to capability delivery, keep payment and worker/cron out unless the sprint says otherwise.
+- `U1.1`: light visual polish, mobile refinement, copy consistency, and secondary-page convergence
+- `A7`: if the next round should switch back to capability delivery on top of the current UI baseline

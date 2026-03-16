@@ -1,6 +1,6 @@
 # Decisions
 
-Last updated: 2026-03-16
+Last updated: 2026-03-17
 
 ## 2026-03-16
 
@@ -43,3 +43,25 @@ Last updated: 2026-03-16
 
 - Decision: U1 explicitly stays out of payment, subscription settlement, worker, cron, and base-layer refactor.
 - Reason: this round is about product readability and decision speed, not platform expansion.
+
+## 2026-03-17
+
+### Mark U1 as complete before any next-round switch
+
+- Decision: U1 should be explicitly closed in docs before starting another round.
+- Reason: the repository truth must show that the parent overview, student home, membership page, and left navigation refactor has already landed and passed verification.
+
+### Prepare real-page acceptance before starting new capability work
+
+- Decision: export current screenshots and record page-level structure before entering any next feature round.
+- Reason: acceptance should be based on current shipped surfaces, not only code diff or memory.
+
+### Keep the next-round choice between U1.1 and A7
+
+- Decision: the next candidate is not locked yet; choose explicitly between `U1.1` and `A7`.
+- Reason: there is still visible value in a light U1.1 polish pass, but the current baseline is also good enough to support capability work if the team wants to move on.
+
+### Treat provider instability as a demo risk, not a blocker to U1 completion
+
+- Decision: provider `429` / `Arrearage` issues are recorded as a demo stability risk, while U1 itself remains complete because the system falls back to mock diagnosis.
+- Reason: the shipped product still functions end-to-end, but real-provider reliability is not stable enough to leave unaddressed before important demos.
