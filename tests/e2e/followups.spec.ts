@@ -19,6 +19,12 @@ test.afterEach(async ({}, testInfo) => {
   logStore.delete(testInfo.testId);
 });
 
+function followupLeadCard(page: Page, sourceRefId: number) {
+  return page.locator('[data-testid^="followup-lead-"]').filter({
+    has: page.locator(`text=/source_ref_id\\s+${sourceRefId}(?!\\d)/`)
+  }).first();
+}
+
 async function login(page: Page, email: string) {
   await page.context().clearCookies();
   await page.goto("/login");
@@ -84,7 +90,7 @@ test("clicking continue tracking auto creates a followup lead", async ({ page },
 
   await login(page, "admin@example.com");
   await page.goto("/admin/followups");
-  const card = page.locator('[data-testid^="followup-lead-"]').filter({ hasText: `source_ref_id ${created.diagnosisId}` }).first();
+  const card = followupLeadCard(page, created.diagnosisId);
   await expect(card).toContainText("parent@example.com", { timeout: 30_000 });
   await expect(card).toContainText("student_id 1", { timeout: 30_000 });
   await expect(card).toContainText(`source_ref_id ${created.diagnosisId}`, { timeout: 30_000 });
@@ -106,7 +112,7 @@ test("followup lead status can flow from contacted to activated with action logs
 
   await login(page, "admin@example.com");
   await page.goto("/admin/followups");
-  const card = page.locator('[data-testid^="followup-lead-"]').filter({ hasText: `source_ref_id ${intentPayload.id}` }).first();
+  const card = followupLeadCard(page, intentPayload.id);
   await expect(card).toContainText("student_id 1", { timeout: 30_000 });
 
   await card.locator('select[name^="followup-status-"]').selectOption("contacted");
@@ -143,8 +149,8 @@ test("followup leads stay isolated between two students", async ({ page }, testI
 
   await login(page, "admin@example.com");
   await page.goto("/admin/followups");
-  const cardA = page.locator('[data-testid^="followup-lead-"]').filter({ hasText: `source_ref_id ${a.diagnosisId}` }).first();
-  const cardB = page.locator('[data-testid^="followup-lead-"]').filter({ hasText: `source_ref_id ${b.diagnosisId}` }).first();
+  const cardA = followupLeadCard(page, a.diagnosisId);
+  const cardB = followupLeadCard(page, b.diagnosisId);
   await expect(cardA).toContainText("student_id 1", { timeout: 30_000 });
   await expect(cardA).not.toContainText("student_id 2");
   await expect(cardB).toContainText("student_id 2", { timeout: 30_000 });
