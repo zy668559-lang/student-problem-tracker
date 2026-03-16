@@ -34,11 +34,11 @@ export function StudentSwitcher({ students, activeStudentId }: { students: Stude
       >
         {students.map((student) => (
           <option key={student.id} value={student.id}>
-            {student.name}{student.grade ? ` · ${student.grade}` : ""}
+            {student.name}{student.grade ? ` / ${student.grade}` : ""}
           </option>
         ))}
       </select>
-      <p className="mt-3 text-sm leading-6 text-slate">切孩子之后，上传、周报、记忆标签都会按这个孩子单独看，不会串。</p>
+      <p className="mt-3 text-sm leading-6 text-slate">切完孩子以后，上传、周报、记忆和复检都会按这个孩子单独看，不会串在一起。</p>
     </label>
   );
 }

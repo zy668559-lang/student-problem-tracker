@@ -25,11 +25,19 @@ test.afterEach(async ({}, testInfo) => {
   logStore.delete(testInfo.testId);
 });
 
+async function safeScreenshot(page: Page, pathName: string) {
+  try {
+    await page.screenshot({ path: pathName, fullPage: true });
+  } catch {
+    await page.screenshot({ path: pathName });
+  }
+}
+
 async function login(page: Page, testInfo: TestInfo) {
   await page.goto("/login");
   await expect(page.locator('input[name="email"]')).toBeVisible();
   await expect(page.locator('input[name="password"]')).toBeVisible();
-  await page.screenshot({ path: testInfo.outputPath("01-login-page.png"), fullPage: true });
+  await safeScreenshot(page, testInfo.outputPath("01-login-page.png"));
 
   await page.locator('input[name="email"]').fill("parent@example.com");
   await page.locator('input[name="password"]').fill("demo123");
@@ -38,13 +46,13 @@ async function login(page: Page, testInfo: TestInfo) {
   await expect(page).toHaveURL(/\/dashboard$/, { timeout: 30_000 });
   await expect(page.locator('a[href="/upload"]').first()).toBeVisible();
   await expect(page.locator("main")).toContainText("学生记忆摘要");
-  await page.screenshot({ path: testInfo.outputPath("02-dashboard-page.png"), fullPage: true });
+  await safeScreenshot(page, testInfo.outputPath("02-dashboard-page.png"));
 }
 
 async function uploadAndOpenDiagnosis(page: Page, testInfo: TestInfo, reportLabel: string) {
   await page.goto("/upload");
   await expect(page.locator('input[type="file"]')).toBeVisible();
-  await page.screenshot({ path: testInfo.outputPath(`03-upload-page-${reportLabel}.png`), fullPage: true });
+  await safeScreenshot(page, testInfo.outputPath(`03-upload-page-${reportLabel}.png`));
 
   await page.locator('input[type="file"]').setInputFiles(fixturePath);
   await page.locator('select[name="subject"]').selectOption("math");
@@ -58,7 +66,7 @@ async function uploadAndOpenDiagnosis(page: Page, testInfo: TestInfo, reportLabe
   await expect(page).toHaveURL(/\/diagnosis\/\d+$/, { timeout: 180_000 });
   await expect(page.locator("pre").first()).toBeVisible({ timeout: 30_000 });
   await expect(page.locator("main")).toContainText("家长这周先这么看", { timeout: 30_000 });
-  await page.screenshot({ path: testInfo.outputPath(`04-diagnosis-page-${reportLabel}.png`), fullPage: true });
+  await safeScreenshot(page, testInfo.outputPath(`04-diagnosis-page-${reportLabel}.png`));
 
   const diagnosisId = Number(page.url().match(/\/diagnosis\/(\d+)$/)?.[1]);
   expect(diagnosisId).toBeGreaterThan(0);
@@ -71,7 +79,7 @@ async function uploadAndOpenDiagnosis(page: Page, testInfo: TestInfo, reportLabe
   await page.locator('a[href^="/weekly-report/"]').first().click();
   await expect(page).toHaveURL(/\/weekly-report\/\d+$/, { timeout: 30_000 });
   await expect(page.locator("main")).toContainText("反复冒出来的错因", { timeout: 30_000 });
-  await page.screenshot({ path: testInfo.outputPath(`05-weekly-report-page-${reportLabel}.png`), fullPage: true });
+  await safeScreenshot(page, testInfo.outputPath(`05-weekly-report-page-${reportLabel}.png`));
 
   return { diagnosisId, weeklyReportId };
 }
@@ -88,7 +96,7 @@ test("full closure: login -> upload -> diagnosis -> weekly report -> review edit
   await page.goto("/review-queue");
   const card = reviewCard(page, diagnosisId);
   await expect(card).toBeVisible();
-  await page.screenshot({ path: testInfo.outputPath("06-review-queue-before-edit.png"), fullPage: true });
+  await safeScreenshot(page, testInfo.outputPath("06-review-queue-before-edit.png"));
 
   const editedPayload = {
     current_stage: "Playwright review-edited stage",
@@ -106,7 +114,7 @@ test("full closure: login -> upload -> diagnosis -> weekly report -> review edit
   await expect(reviewCard(page, diagnosisId).locator("textarea").first()).toContainText("Playwright Repair Action A");
 
   await reviewCard(page, diagnosisId).locator("button").nth(0).click();
-  await page.screenshot({ path: testInfo.outputPath("07-review-queue-approved.png"), fullPage: true });
+  await safeScreenshot(page, testInfo.outputPath("07-review-queue-approved.png"));
 
   await page.goto(`/diagnosis/${diagnosisId}`);
   await expect(page.locator("main")).toContainText("已通过");
@@ -129,7 +137,7 @@ test("review queue can reject a generated diagnosis", async ({ page }, testInfo)
   await expect(card).toBeVisible();
 
   await card.locator("button").nth(2).click();
-  await page.screenshot({ path: testInfo.outputPath("08-review-queue-rejected.png"), fullPage: true });
+  await safeScreenshot(page, testInfo.outputPath("08-review-queue-rejected.png"));
 
   await page.goto(`/diagnosis/${diagnosisId}`);
   await expect(page.locator("main")).toContainText("已驳回");

@@ -19,6 +19,12 @@ test.afterEach(async ({}, testInfo) => {
   logStore.delete(testInfo.testId);
 });
 
+function followupLeadCard(page: Page, sourceRefId: number) {
+  return page.locator('[data-testid^="followup-lead-"]').filter({
+    has: page.locator(`text=/source_ref_id\\s+${sourceRefId}(?!\\d)/`)
+  }).first();
+}
+
 async function login(page: Page, email: string) {
   await page.context().clearCookies();
   await page.goto("/login");
@@ -146,7 +152,7 @@ test("weekly scheduler and follow-up funnel are visible and editable in admin", 
   await page.screenshot({ path: testInfo.outputPath("03-operations-scheduler.png"), fullPage: true });
 
   await page.goto("/admin/followups");
-  const card = page.locator('[data-testid^="followup-lead-"]').filter({ hasText: `source_ref_id ${intentPayload.id}` }).first();
+  const card = followupLeadCard(page, intentPayload.id);
   await expect(card).toContainText("source_type tracking_intent", { timeout: 30_000 });
   await card.locator('select[name^="followup-status-"]').selectOption("contacted");
   await card.locator('select[name^="followup-action-"]').selectOption("wechat_contacted");

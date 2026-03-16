@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -8,6 +8,9 @@ import type { AppSession, StudentOption } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const parentNavItems = [
+  { href: "/student-home", label: "孩子首页" },
+  { href: "/parent-overview", label: "家长总览" },
+  { href: "/membership", label: "会员分层" },
   { href: "/dashboard", label: "总览" },
   { href: "/upload", label: "上传" },
   { href: "/subject/math", label: "数学模块" },
@@ -111,6 +114,3 @@ export function AppShell({ children, session, students }: { children: ReactNode;
     </div>
   );
 }
-
-
-
