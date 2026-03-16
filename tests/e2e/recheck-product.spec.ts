@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
+import { resetStudentMembership, resetStudentTrialAccess, setStudentMembership } from "./membership-test-helpers";
 
 const fixturePath = path.join(process.cwd(), "tests", "fixtures", "sample-upload.png");
 const logStore = new Map<string, string[]>();
@@ -36,19 +37,8 @@ async function login(page: Page, email: string) {
 
 async function resetStudentQuota(page: Page) {
   await login(page, "admin@example.com");
-  const response = await page.request.patch("/api/admin/trial-access/1", {
-    data: {
-      whitelistEnabled: true,
-      freeTrialTotal: 200,
-      freeTrialUsed: 0,
-      maxImagesPerUpload: 1,
-      enabledGrades: [],
-      enabledSubjects: ["math", "english"],
-      trackingStatus: "trial",
-      paidTrackingEnabled: false
-    }
-  });
-  expect(response.ok()).toBeTruthy();
+  await resetStudentTrialAccess(page, [1]);
+  await resetStudentMembership(page, [1]);
 }
 
 async function createDiagnosis(page: Page, tag: string) {
@@ -74,6 +64,7 @@ test("recheck upload lands on dedicated compare page with parent-friendly summar
   const tag = `Playwright-Compare-${Date.now()}`;
 
   await resetStudentQuota(page);
+  await setStudentMembership(page, 1, "self_service", { reason: "e2e compare self service" });
   const first = await createDiagnosis(page, tag);
   expect(first.recheckTaskId).toBeTruthy();
 
@@ -101,6 +92,7 @@ test("manual recheck correction writes back priority and weekly report", async (
   const tag = `Playwright-Recheck-Manual-${Date.now()}`;
 
   await resetStudentQuota(page);
+  await setStudentMembership(page, 1, "coaching", { reason: "e2e manual correction coaching" });
   const first = await createDiagnosis(page, tag);
   expect(first.recheckTaskId).toBeTruthy();
 
@@ -133,6 +125,7 @@ test("weekly scheduler and follow-up funnel are visible and editable in admin", 
   const followupNote = `家长这周先看变化，${Date.now()}`;
 
   await resetStudentQuota(page);
+  await setStudentMembership(page, 1, "self_service", { reason: "e2e operations self service" });
   const first = await createDiagnosis(page, tag);
   expect(first.recheckTaskId).toBeTruthy();
 

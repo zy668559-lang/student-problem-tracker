@@ -23,7 +23,10 @@ export default async function MembershipPage() {
               当前主卡点是：{snapshot.currentBlockPoint}。这周最怕回弹的一步是：{snapshot.unstableStep}
             </p>
           </div>
-          <Badge tone={snapshot.membership.tone}>{snapshot.membership.tierLabel}</Badge>
+          <div className="flex flex-wrap gap-3">
+            <Badge tone={snapshot.membership.tone}>{snapshot.membership.tierLabel}</Badge>
+            <Badge tone="gold">{snapshot.membership.statusLabel}</Badge>
+          </div>
         </div>
         <div className="mt-5 grid gap-4 lg:grid-cols-2">
           <div className="rounded-2xl border border-line px-4 py-4">
@@ -65,7 +68,8 @@ export default async function MembershipPage() {
       <MembershipTierActions
         diagnosisId={snapshot.latestDiagnosisId}
         continueTrackingHref={snapshot.continueTrackingHref}
-        trackingStatus={snapshot.membership.trackingStatus}
+        membershipTier={snapshot.membership.tier}
+        tierStatus={snapshot.membership.tierStatus}
       />
 
       <SectionCard title="顺着往下走的入口" subtitle="想继续看证据，还是先回家长总览，这里都能接上。">

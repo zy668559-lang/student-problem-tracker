@@ -8,6 +8,9 @@ export type RecheckTaskStatus = "queued" | "recheck_due" | "passed_once" | "impr
 export type RecheckOutcome = "baseline" | "blocked" | "improving" | "passed";
 export type SubmissionType = "diagnosis" | "recheck";
 export type TrackingStatus = "trial" | "intent" | "active";
+export type MembershipTier = "trial" | "self_service" | "coaching";
+export type MembershipTierStatus = "active" | "pending" | "paused" | "expired";
+export type MembershipManagementAction = "open" | "extend" | "downgrade" | "pause";
 export type TrackingIntentStatus = "intent_submitted" | "activated" | "closed";
 export type RecheckManualDecision = "stabilized" | "unstable" | "bombing";
 export type LeadFollowupStatus = "new_intent" | "contacted" | "follow_up_pending" | "activated" | "not_needed" | "rejected";
@@ -101,6 +104,67 @@ export interface TrialAccessSnapshot {
   paidTrackingEnabled?: boolean;
   trackingStatus?: TrackingStatus;
   subjectOpenMap: Record<Subject, boolean>;
+}
+
+export interface MembershipBenefitFlags {
+  diagnosisQuota: number | null;
+  allowContinuousRecheck: boolean;
+  allowWeeklyReport: boolean;
+  allowTimeline: boolean;
+  allowTargetedAssets: boolean;
+  allowTeacherCorrection: boolean;
+  followupPriority: "normal" | "high";
+  reminderLevel: "basic" | "strong";
+  actionAdviceLevel: "basic" | "strong";
+}
+
+export interface StudentMembershipState {
+  studentId: number;
+  membershipTier: MembershipTier;
+  tierStatus: MembershipTierStatus;
+  effectiveFrom: string | null;
+  effectiveTo: string | null;
+  benefitFlags: MembershipBenefitFlags;
+  manualOverrideReason: string | null;
+  updatedAt: string;
+  tierLabel: string;
+  statusLabel: string;
+  effectiveTier: MembershipTier;
+  isEffective: boolean;
+  summary: string;
+  benefitSummary: string[];
+}
+
+export interface MembershipChangeLog {
+  id: number;
+  studentId: number;
+  studentName: string;
+  actorUserId: number;
+  actorName: string;
+  actionType: MembershipManagementAction | "intent_requested" | "intent_closed" | "intent_activated";
+  beforeState: Pick<StudentMembershipState, "membershipTier" | "tierStatus" | "effectiveFrom" | "effectiveTo" | "manualOverrideReason"> | null;
+  afterState: Pick<StudentMembershipState, "membershipTier" | "tierStatus" | "effectiveFrom" | "effectiveTo" | "manualOverrideReason"> | null;
+  note: string | null;
+  createdAt: string;
+}
+
+export interface MembershipAdminStudentCard {
+  studentId: number;
+  studentName: string;
+  grade: string | null;
+  parentName: string;
+  parentEmail: string;
+  membership: StudentMembershipState;
+  latestDiagnosisId: number | null;
+  latestWeeklyReportId: number | null;
+  latestBlockPoint: string;
+  weeklyChangeSummary: string;
+  unstableStep: string;
+}
+
+export interface MembershipAdminSnapshot {
+  items: MembershipAdminStudentCard[];
+  recentLogs: MembershipChangeLog[];
 }
 
 export interface SkillAsset {
@@ -369,6 +433,7 @@ export interface TrackingIntentDetail {
   status: TrackingIntentStatus;
   source: string;
   trackingStatus: TrackingStatus;
+  requestedTier: MembershipTier;
   submittedAt: string | null;
   activatedAt: string | null;
   createdAt: string;
@@ -539,6 +604,7 @@ export interface TrackingOfferDetail {
   nextPriority: string;
   continueTrackingReason: string;
   trackingStatus: TrackingStatus;
+  membership: StudentMembershipState;
   benefits: string[];
 }
 

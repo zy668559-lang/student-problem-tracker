@@ -1,6 +1,11 @@
 ﻿import { getDb } from "@/lib/db";
 import { ensureA4Schema } from "@/lib/db/a4";
 import { appendAdminActionLog, ensureAdminSchema } from "@/lib/db/admin";
+import {
+  activateMembershipFromIntent,
+  closeMembershipIntent,
+  ensureMembershipSchema
+} from "@/lib/db/membership";
 import { ensureP25Schema } from "@/lib/db/p25";
 import { ensureProductSchema } from "@/lib/db/product";
 import type {
@@ -446,6 +451,7 @@ export function ensureFollowupSchema() {
   ensureP25Schema();
   ensureA4Schema();
   ensureAdminSchema();
+  ensureMembershipSchema();
   const db = getDb();
 
   db.exec(`
@@ -575,16 +581,13 @@ function syncTrackingStateByLead(row: any, status: LeadFollowupStatus) {
   if (row.tracking_intent_id) {
     if (status === "activated") {
       db.prepare(`UPDATE tracking_intents SET status = 'activated', activated_at = ?, updated_at = ? WHERE id = ?`).run(now, now, row.tracking_intent_id);
-      db.prepare(`UPDATE trial_access SET tracking_status = 'active', paid_tracking_enabled = 1, updated_at = ? WHERE student_id = ?`).run(now, row.student_id);
       return;
     }
     if (status === "rejected" || status === "not_needed") {
       db.prepare(`UPDATE tracking_intents SET status = 'closed', updated_at = ? WHERE id = ?`).run(now, row.tracking_intent_id);
-      db.prepare(`UPDATE trial_access SET tracking_status = CASE WHEN paid_tracking_enabled = 1 THEN 'active' ELSE 'trial' END, updated_at = ? WHERE student_id = ?`).run(now, row.student_id);
       return;
     }
     db.prepare(`UPDATE tracking_intents SET status = 'intent_submitted', updated_at = ? WHERE id = ?`).run(now, row.tracking_intent_id);
-    db.prepare(`UPDATE trial_access SET tracking_status = CASE WHEN paid_tracking_enabled = 1 THEN 'active' ELSE 'intent' END, updated_at = ? WHERE student_id = ?`).run(now, row.student_id);
   }
 }
 
@@ -653,6 +656,11 @@ export function recordFollowupAction(input: {
   }
 
   syncTrackingStateByLead(row, derivedStatus);
+  if (row.tracking_intent_id && derivedStatus === "activated") {
+    activateMembershipFromIntent(row.tracking_intent_id, input.adminSession, note ?? "跟进台手动确认会员生效。");
+  } else if (row.tracking_intent_id && (derivedStatus === "rejected" || derivedStatus === "not_needed")) {
+    closeMembershipIntent(row.tracking_intent_id, rejectionReason ?? note ?? "这轮跟进先关闭。");
+  }
 
   appendAdminActionLog({
     userId: input.adminSession.userId,

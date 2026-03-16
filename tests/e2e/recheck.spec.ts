@@ -1,6 +1,7 @@
 ﻿import fs from "node:fs/promises";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
+import { resetStudentTrialAccess, setStudentMembership } from "./membership-test-helpers";
 
 const fixturePath = path.join(process.cwd(), "tests", "fixtures", "sample-upload.png");
 const logStore = new Map<string, string[]>();
@@ -39,19 +40,8 @@ async function loginAdmin(page: Page) {
 
 async function resetTrialQuota(page: Page) {
   await loginAdmin(page);
-  const response = await page.request.patch("/api/admin/trial-access/1", {
-    data: {
-      whitelistEnabled: true,
-      freeTrialTotal: 200,
-      freeTrialUsed: 0,
-      maxImagesPerUpload: 1,
-      enabledGrades: ["七年级", "八年级"],
-      enabledSubjects: ["math", "english"],
-      trackingStatus: "trial",
-      paidTrackingEnabled: false
-    }
-  });
-  expect(response.ok()).toBeTruthy();
+  await resetStudentTrialAccess(page, [1]);
+  await setStudentMembership(page, 1, "self_service", { reason: "e2e recheck self service" });
 }
 
 async function uploadDiagnosis(page: Page, input: { tag: string; scoreNote: string; note: string }) {

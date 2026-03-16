@@ -1,5 +1,6 @@
 ﻿import { NextResponse } from "next/server";
 import { appendAdminActionLog, ensureAdminSchema, updateTrialAccessAdmin } from "@/lib/db/admin";
+import { syncMembershipStateFromLegacyTracking } from "@/lib/db/membership";
 import { isAdminSession, parseSessionFromCookieHeader } from "@/lib/session";
 import type { Subject } from "@/lib/types";
 
@@ -32,6 +33,15 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     trackingStatus: typeof body.trackingStatus === "string" ? body.trackingStatus : undefined,
     paidTrackingEnabled: typeof body.paidTrackingEnabled === "boolean" ? body.paidTrackingEnabled : undefined
   });
+
+  if (typeof body.trackingStatus === "string" || typeof body.paidTrackingEnabled === "boolean") {
+    syncMembershipStateFromLegacyTracking({
+      studentId: Number(id),
+      trackingStatus: typeof body.trackingStatus === "string" ? body.trackingStatus : null,
+      paidTrackingEnabled: typeof body.paidTrackingEnabled === "boolean" ? body.paidTrackingEnabled : null,
+      reason: "legacy trial access sync"
+    });
+  }
 
   appendAdminActionLog({
     userId: session.userId,

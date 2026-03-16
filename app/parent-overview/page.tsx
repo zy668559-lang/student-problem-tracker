@@ -46,7 +46,10 @@ export default async function ParentOverviewPage() {
         </SectionCard>
         <SectionCard title="当前会员状态" subtitle="先看边界，再决定要不要升级。">
           <div className="space-y-3">
-            <Badge tone={active.membership.tone}>{active.membership.tierLabel}</Badge>
+            <div className="flex flex-wrap gap-3">
+              <Badge tone={active.membership.tone}>{active.membership.tierLabel}</Badge>
+              <Badge tone="gold">{active.membership.statusLabel}</Badge>
+            </div>
             <p className="text-sm leading-7 text-slate">{active.membership.label}</p>
           </div>
         </SectionCard>
@@ -76,7 +79,7 @@ export default async function ParentOverviewPage() {
               testId="parent-overview-active-continue"
               className="rounded-2xl bg-ink px-5 py-3 text-sm font-semibold text-white"
             >
-              继续追踪 4 周
+              {active.membership.tier === "trial" ? "申请开通自助会员" : active.membership.tier === "self_service" ? "咨询升级陪跑" : "继续按陪跑节奏走"}
             </StudentScopedLink>
             <StudentScopedLink
               studentId={active.studentId}
@@ -142,7 +145,7 @@ export default async function ParentOverviewPage() {
                   testId={`parent-overview-continue-${student.studentId}`}
                   className="rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white"
                 >
-                  继续追踪 4 周
+                  {student.membership.tier === "trial" ? "申请开通自助会员" : student.membership.tier === "self_service" ? "咨询升级陪跑" : "继续按陪跑节奏走"}
                 </StudentScopedLink>
                 <StudentScopedLink
                   studentId={student.studentId}

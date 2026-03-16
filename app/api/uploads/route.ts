@@ -23,6 +23,10 @@ import {
   persistWeeklyReportArtifacts,
   recordSubmissionMeta
 } from "@/lib/db/p25";
+import {
+  validateMembershipCapability,
+  validateMembershipUploadAllowance
+} from "@/lib/db/membership";
 import { analyzeUpload, generateWeeklyReport } from "@/lib/services/ai";
 import { softenUploadError } from "@/lib/services/tone-chen";
 import { getActiveStudentId, parseSessionFromCookieHeader } from "@/lib/session";
@@ -72,10 +76,22 @@ export async function POST(request: Request) {
   if (!guard.ok) {
     return NextResponse.json({ ok: false, message: guard.message }, { status: 403 });
   }
+  const membershipAllowance = validateMembershipUploadAllowance({
+    studentId,
+    usedCount: guard.access.freeTrialUsed
+  });
+  if (!membershipAllowance.ok) {
+    return NextResponse.json({ ok: false, message: membershipAllowance.message }, { status: 403 });
+  }
+  const canUseContinuousRecheck = validateMembershipCapability(studentId, "continuous_recheck").ok;
+  const canUseWeeklyReport = validateMembershipCapability(studentId, "weekly_report").ok;
 
   const recheckTask = submissionType === "recheck" && recheckTaskId
     ? getRecheckTaskPageDetail(recheckTaskId, studentId)
     : null;
+  if (submissionType === "recheck" && !canUseContinuousRecheck) {
+    return NextResponse.json({ ok: false, message: "这位孩子当前还在试用边界，暂时不能直接走复检上传。" }, { status: 403 });
+  }
   if (submissionType === "recheck" && recheckTaskId && !recheckTask) {
     return NextResponse.json({ ok: false, message: "这条复检任务我这边没对上，先刷新一下页面再试。" }, { status: 404 });
   }
@@ -197,18 +213,21 @@ export async function POST(request: Request) {
     });
   }
 
-  const weeklyBase = await generateWeeklyReport(studentId);
-  const weekly = decorateWeeklyPayload(studentId, weeklyBase, "instant");
-  const weeklyReportId = upsertWeeklyReport(studentId, weekly.payload);
-  persistWeeklyReportArtifacts({
-    reportId: weeklyReportId,
-    mode: "instant",
-    studentReportJson: weekly.studentReportJson,
-    continueTrackingRecommended: weekly.continueTrackingRecommended,
-    batchGeneratedAt: null
-  });
-  attachWeeklyReportToRecheckTasks(studentId, weeklyReportId);
-  upsertStudentMemorySummary(studentId);
+  let weeklyReportId: number | null = null;
+  if (canUseWeeklyReport) {
+    const weeklyBase = await generateWeeklyReport(studentId);
+    const weekly = decorateWeeklyPayload(studentId, weeklyBase, "instant");
+    weeklyReportId = upsertWeeklyReport(studentId, weekly.payload);
+    persistWeeklyReportArtifacts({
+      reportId: weeklyReportId,
+      mode: "instant",
+      studentReportJson: weekly.studentReportJson,
+      continueTrackingRecommended: weekly.continueTrackingRecommended,
+      batchGeneratedAt: null
+    });
+    attachWeeklyReportToRecheckTasks(studentId, weeklyReportId);
+    upsertStudentMemorySummary(studentId);
+  }
 
   return NextResponse.json({ ok: true, diagnosisId, weeklyReportId, recheckTaskId: recheck.task?.id ?? null, submissionType });
 }

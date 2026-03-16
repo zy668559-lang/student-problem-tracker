@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
+import { resetStudentMembership, resetStudentTrialAccess, setStudentMembership } from "./membership-test-helpers";
 
 const fixturePath = path.join(process.cwd(), "tests", "fixtures", "sample-upload.png");
 const logStore = new Map<string, string[]>();
@@ -29,21 +30,8 @@ async function login(page: Page, email: string) {
 
 async function resetStudentAccess(page: Page) {
   await login(page, "admin@example.com");
-  for (const id of [1, 2]) {
-    const response = await page.request.patch(`/api/admin/trial-access/${id}`, {
-      data: {
-        whitelistEnabled: true,
-        freeTrialTotal: 200,
-        freeTrialUsed: 0,
-        maxImagesPerUpload: 1,
-        enabledGrades: [],
-        enabledSubjects: ["math", "english"],
-        trackingStatus: "trial",
-        paidTrackingEnabled: false
-      }
-    });
-    expect(response.ok()).toBeTruthy();
-  }
+  await resetStudentTrialAccess(page, [1, 2]);
+  await resetStudentMembership(page, [1, 2]);
 }
 
 async function switchStudent(page: Page, studentId: string, landing = "/dashboard") {
@@ -72,6 +60,7 @@ async function createDiagnosis(page: Page, tag: string, subject: "math" | "engli
 test("can enter tracking offer page from timeline and choose take advice", async ({ page }, testInfo) => {
   test.setTimeout(420_000);
   await resetStudentAccess(page);
+  await setStudentMembership(page, 1, "self_service", { reason: "e2e conversion offer" });
   await login(page, "parent@example.com");
   await switchStudent(page, "1");
   await createDiagnosis(page, `offer-a-${Date.now()}`, "math", "函数");
@@ -89,6 +78,7 @@ test("can enter tracking offer page from timeline and choose take advice", async
 test("can continue from tracking offer page into recheck flow", async ({ page }, testInfo) => {
   test.setTimeout(420_000);
   await resetStudentAccess(page);
+  await setStudentMembership(page, 1, "self_service", { reason: "e2e conversion continue" });
   await login(page, "parent@example.com");
   await switchStudent(page, "1");
   await createDiagnosis(page, `offer-b-${Date.now()}`, "math", "函数");

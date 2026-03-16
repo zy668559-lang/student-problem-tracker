@@ -26,10 +26,19 @@ const adminNavItems = [
   { href: "/admin/operations", label: "审核与成本" },
   { href: "/admin/assets", label: "素材库" },
   { href: "/admin/recheck-tasks", label: "复检任务" },
-  { href: "/admin/followups", label: "跟进漏斗" }
+  { href: "/admin/followups", label: "跟进漏斗" },
+  { href: "/admin/memberships", label: "会员状态" }
 ];
 
-export function AppShell({ children, session, students }: { children: ReactNode; session: AppSession | null; students: StudentOption[] }) {
+export function AppShell({
+  children,
+  session,
+  students
+}: {
+  children: ReactNode;
+  session: AppSession | null;
+  students: StudentOption[];
+}) {
   const pathname = usePathname();
   const isAdmin = session?.role === "admin";
 
@@ -43,9 +52,7 @@ export function AppShell({ children, session, students }: { children: ReactNode;
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-accent/70">Student Problem Tracker</p>
           <h1 className="mt-3 text-2xl font-semibold text-ink">问题诊断与变化追踪</h1>
-          <p className="mt-3 text-sm leading-6 text-slate">
-            后台只盯三件事：问题、动作、变化。
-          </p>
+          <p className="mt-3 text-sm leading-6 text-slate">后台只盯三件事：问题、动作、变化。</p>
         </div>
 
         <div className="mt-6 space-y-4">
@@ -53,7 +60,11 @@ export function AppShell({ children, session, students }: { children: ReactNode;
           <div className="rounded-3xl border border-line bg-white/80 p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent/70">账号视角</p>
             <p className="mt-3 text-sm font-semibold text-ink">{isAdmin ? "管理员账号" : "家长账号"}</p>
-            <p className="mt-2 text-sm leading-6 text-slate">{isAdmin ? "管理员能进运营后台，也会留下操作日志。" : "现在这个账号下的孩子会分开看数据，不会把上传、记忆和周报混在一起。"}</p>
+            <p className="mt-2 text-sm leading-6 text-slate">
+              {isAdmin
+                ? "管理员能进运营后台，操作也都会留痕。"
+                : "这个账号下面的孩子会分开看数据，不会把上传、记忆和周报混在一起。"}
+            </p>
           </div>
         </div>
 
@@ -67,9 +78,7 @@ export function AppShell({ children, session, students }: { children: ReactNode;
                   href={item.href}
                   className={cn(
                     "flex items-center rounded-2xl px-4 py-3 text-sm font-medium transition",
-                    active
-                      ? "bg-ink text-white shadow-lg shadow-ink/10"
-                      : "text-slate hover:bg-mist hover:text-ink"
+                    active ? "bg-ink text-white shadow-lg shadow-ink/10" : "text-slate hover:bg-mist hover:text-ink"
                   )}
                 >
                   {item.label}
@@ -91,9 +100,7 @@ export function AppShell({ children, session, students }: { children: ReactNode;
                     href={item.href}
                     className={cn(
                       "flex items-center rounded-2xl px-4 py-3 text-sm font-medium transition",
-                      active
-                        ? "bg-accent text-white shadow-lg shadow-accent/15"
-                        : "text-slate hover:bg-mist hover:text-ink"
+                      active ? "bg-accent text-white shadow-lg shadow-accent/15" : "text-slate hover:bg-mist hover:text-ink"
                     )}
                   >
                     {item.label}

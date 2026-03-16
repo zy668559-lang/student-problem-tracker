@@ -1,6 +1,7 @@
 ﻿import fs from "node:fs/promises";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
+import { resetStudentMembership, resetStudentTrialAccess, setStudentMembership } from "./membership-test-helpers";
 
 const fixturePath = path.join(process.cwd(), "tests", "fixtures", "sample-upload.png");
 const logStore = new Map<string, string[]>();
@@ -36,21 +37,8 @@ async function login(page: Page, email: string) {
 
 async function resetStudentAccess(page: Page) {
   await login(page, "admin@example.com");
-  for (const id of [1, 2]) {
-    const response = await page.request.patch(`/api/admin/trial-access/${id}`, {
-      data: {
-        whitelistEnabled: true,
-        freeTrialTotal: 200,
-        freeTrialUsed: 0,
-        maxImagesPerUpload: 1,
-        enabledGrades: [],
-        enabledSubjects: ["math", "english"],
-        trackingStatus: "trial",
-        paidTrackingEnabled: false
-      }
-    });
-    expect(response.ok()).toBeTruthy();
-  }
+  await resetStudentTrialAccess(page, [1, 2]);
+  await resetStudentMembership(page, [1, 2]);
 }
 
 async function switchStudent(page: Page, studentId: string) {
@@ -81,6 +69,7 @@ async function createDiagnosis(page: Page, studentLabel: string, subject: "math"
 test("clicking continue tracking auto creates a followup lead", async ({ page }, testInfo) => {
   test.setTimeout(420_000);
   await resetStudentAccess(page);
+  await setStudentMembership(page, 1, "self_service", { reason: "e2e followup continue" });
   await login(page, "parent@example.com");
   await switchStudent(page, "1");
   const created = await createDiagnosis(page, `lead-a-${Date.now()}`, "math", 0);
@@ -135,6 +124,8 @@ test("followup lead status can flow from contacted to activated with action logs
 test("followup leads stay isolated between two students", async ({ page }, testInfo) => {
   test.setTimeout(420_000);
   await resetStudentAccess(page);
+  await setStudentMembership(page, 1, "self_service", { reason: "e2e followup student 1" });
+  await setStudentMembership(page, 2, "self_service", { reason: "e2e followup student 2" });
   await login(page, "parent@example.com");
 
   await switchStudent(page, "1");

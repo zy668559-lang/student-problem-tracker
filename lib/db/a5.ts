@@ -1,19 +1,26 @@
 import { getDb, getPrimaryStudentId } from "@/lib/db";
-import { listStudentsForUser } from "@/lib/db/admin";
 import { getEvidenceTimelineDetail } from "@/lib/db/a4";
 import { getTrackingOfferDetail } from "@/lib/db/a43";
-import { getStudentMemorySummary, getTrialAccessSnapshot } from "@/lib/db/product";
+import { listStudentsForUser } from "@/lib/db/admin";
+import { getStudentMembershipState } from "@/lib/db/membership";
+import { getStudentMemorySummary } from "@/lib/db/product";
 import { getPriorityRecheckTask } from "@/lib/db/p25";
-import type { TrackingStatus } from "@/lib/types";
+import type { MembershipTier, MembershipTierStatus, TrackingStatus } from "@/lib/types";
 
 type BadgeTone = "accent" | "gold" | "rose" | "ink";
 
 export interface MembershipStatusCard {
   label: string;
   detail: string;
+  tier: MembershipTier;
+  tierStatus: MembershipTierStatus;
   tierLabel: "试用" | "自助会员" | "陪跑会员";
+  statusLabel: string;
   tone: BadgeTone;
   trackingStatus: TrackingStatus;
+  canSeeTimeline: boolean;
+  canUseWeeklyReport: boolean;
+  canUseTeacherCorrection: boolean;
 }
 
 export interface StudentRoleShellSummary {
@@ -52,7 +59,7 @@ export interface ParentOverviewSnapshot {
 }
 
 export interface MembershipTierCard {
-  slug: "trial" | "self_service" | "companion";
+  slug: "trial" | "self_service" | "coaching";
   title: string;
   highlight: string;
   gets: string[];
@@ -76,7 +83,6 @@ function parseObject<T>(value: string | null | undefined, fallback: T): T {
   if (!value) {
     return fallback;
   }
-
   try {
     return JSON.parse(value) as T;
   } catch {
@@ -142,34 +148,32 @@ function getLatestDiagnosisMeta(studentId: number) {
 }
 
 function getMembershipStatusCard(studentId: number): MembershipStatusCard {
-  const access = getTrialAccessSnapshot(studentId);
-
-  if (access.trackingStatus === "active") {
-    return {
-      label: "现在已经在陪跑会员里了，这条线我会按周接着盯。",
-      detail: "不只是看今天这道题对没对，而是继续看这类问题到底稳没稳。",
-      tierLabel: "陪跑会员",
-      tone: "accent",
-      trackingStatus: "active"
-    };
-  }
-
-  if (access.trackingStatus === "intent") {
-    return {
-      label: "你已经把开通意向递上来了，我这边会先按这条线接住。",
-      detail: "现在先别急着下结论，先把最怕回弹的那一步继续盯住。",
-      tierLabel: "自助会员",
-      tone: "gold",
-      trackingStatus: "intent"
-    };
-  }
+  const membership = getStudentMembershipState(studentId);
+  const tone = membership.tierStatus === "paused" || membership.tierStatus === "expired"
+    ? "rose"
+    : membership.membershipTier === "coaching"
+      ? "accent"
+      : membership.membershipTier === "self_service"
+        ? "gold"
+        : "ink";
+  const trackingStatus = membership.membershipTier === "coaching" && membership.tierStatus === "active"
+    ? "active"
+    : membership.membershipTier === "self_service" && (membership.tierStatus === "active" || membership.tierStatus === "pending")
+      ? "intent"
+      : "trial";
 
   return {
-    label: "现在还是试用边界，先把主问题看清楚，还没进连续追踪。",
-    detail: "试用能帮你把问题看明白，但还不负责把 4 周变化一直接到底。",
-    tierLabel: "试用",
-    tone: "ink",
-    trackingStatus: "trial"
+    label: membership.summary,
+    detail: membership.benefitSummary[0] ?? "先顺着这条线继续看。",
+    tier: membership.membershipTier,
+    tierStatus: membership.tierStatus,
+    tierLabel: membership.membershipTier === "coaching" ? "陪跑会员" : membership.membershipTier === "self_service" ? "自助会员" : "试用",
+    statusLabel: membership.statusLabel,
+    tone,
+    trackingStatus,
+    canSeeTimeline: membership.benefitFlags.allowTimeline,
+    canUseWeeklyReport: membership.benefitFlags.allowWeeklyReport,
+    canUseTeacherCorrection: membership.benefitFlags.allowTeacherCorrection
   };
 }
 
@@ -177,9 +181,22 @@ function getCurrentStatusCopy(input: {
   trackingStatus: TrackingStatus;
   priorityTaskStatus?: string | null;
   unstableStep: string;
+  membership: MembershipStatusCard;
 }) {
+  if (input.membership.tierStatus === "pending") {
+    return "这条会员申请已经递上去了。现在先按当前边界继续看，等后台确认后，长线权益才会一起生效。";
+  }
+
+  if (input.membership.tierStatus === "paused" || input.membership.tierStatus === "expired") {
+    return "这条会员状态现在先停住了。已有记录都在，但长线权益先不继续往下接。";
+  }
+
   if (input.trackingStatus === "active") {
-    return "这条现在已经在继续追踪里，重点不是看会没会，是看稳没稳。";
+    return "这条现在已经在陪跑会员里，重点不是看会没会，是看稳没稳。";
+  }
+
+  if (input.trackingStatus === "intent") {
+    return "这条现在已经进自助会员节奏了，周报、自动复检和时间轴都会顺着主线接。";
   }
 
   if (input.priorityTaskStatus === "stabilized") {
@@ -239,7 +256,9 @@ function buildStudentSummary(studentId: number): StudentRoleShellSummary {
   );
   const latestRecheckResult = normalize(
     latestDiagnosis?.recheck_summary ?? memory.recheck_status_summary,
-    "这条还没到正式记稳的时候，先按这周主线继续盯。"
+    membership.canUseWeeklyReport
+      ? "这条还没到正式记稳的时候，先按这周主线继续盯。"
+      : "这轮还是基础体检结果，还没进入连续复检。"
   );
   const weeklyOneLiner = normalize(
     timeline?.currentChangeSummary ?? offer?.weeklyChange ?? weekly.parent_weekly_summary,
@@ -247,12 +266,13 @@ function buildStudentSummary(studentId: number): StudentRoleShellSummary {
   );
   const nextPriority = normalize(
     timeline?.nextPriority ?? offer?.nextPriority ?? latestDiagnosis?.next_priority ?? weekly.next_priority ?? memory.next_priority,
-    "下轮还是先盯最爱反复的那一条。"
+    membership.canUseWeeklyReport ? "下轮还是先盯最爱反复的那一条。" : "如果要继续追，就先把这次主卡点顺着接下去。"
   );
   const currentStatus = getCurrentStatusCopy({
     trackingStatus: membership.trackingStatus,
     priorityTaskStatus: priorityTask?.status ?? null,
-    unstableStep
+    unstableStep,
+    membership
   });
   const latestDiagnosisId = timeline?.latestDiagnosisId ?? offer?.diagnosisId ?? latestDiagnosis?.id ?? null;
   const priorityRecheckTaskId = timeline?.priorityRecheckTaskId ?? offer?.priorityRecheckTaskId ?? priorityTask?.id ?? null;
@@ -284,7 +304,7 @@ export function getStudentHomeSnapshot(studentId = getPrimaryStudentId()): Stude
 
   return {
     ...summary,
-    heroSummary: `${summary.studentName} 这周先别东一锤西一棒，顺着这一条线往下做最省力。`
+    heroSummary: `${summary.studentName} 这周先别东一榔头西一棒，顺着这一条线往下做最省力。`
   };
 }
 
@@ -326,9 +346,9 @@ export function getMembershipPageSnapshot(studentId = getPrimaryStudentId()): Me
         title: "试用",
         highlight: "先把主问题看清楚，不急着谈长期。",
         gets: [
-          "能先看清孩子现在最主要卡在哪。",
-          "能拿到这周先做什么，不用自己瞎猜。",
-          "能看到一次诊断、一次周报和当前会员边界。"
+          "只先做 1 次体检，先把主问题看清楚。",
+          "能拿到基础结果和这次先做什么，不用自己瞎猜。",
+          "这档先不给连续复检、时间轴和老师人工纠偏。"
         ],
         fits: "适合刚进来，先想看清孩子是不是卡在同一个点上的家长。",
         difference: "这是起步层，只负责看明白，不负责把变化连续接 4 周。"
@@ -336,26 +356,26 @@ export function getMembershipPageSnapshot(studentId = getPrimaryStudentId()): Me
       {
         slug: "self_service",
         title: "自助会员",
-        highlight: "你自己推进，我把主线和边界给你讲明白。",
+        highlight: "你自己推进，我把主线和节奏给你接起来。",
         gets: [
-          "可以继续看证据时间轴，不只是看单次结果。",
-          "能持续看到下轮优先级和这周最该守的一步。",
-          "申请开通后，这条线会先被记进继续追踪名单。"
+          "可以周期上传、看周报、看证据时间轴，不再只看单次结果。",
+          "自动复检和定向素材推荐会跟着这条线继续往下跑。",
+          "家长每周都能知道下轮优先级和还没稳的那一步。"
         ],
-        fits: "适合家长愿意自己盯执行，只想把主线和节奏抓稳。",
+        fits: "适合家长愿意自己盯执行，但希望系统把主线、节奏和证据先接稳。",
         difference: "比试用多的是连续追踪视角，不再只看一次体检结论。"
       },
       {
-        slug: "companion",
+        slug: "coaching",
         title: "陪跑会员",
-        highlight: "问题、动作、变化都按周接起来，不靠感觉判断。",
+        highlight: "问题、动作、变化和老师人工纠偏都一起接上。",
         gets: [
           "复检、时间轴、周报和继续追踪会按一条线往下接。",
-          "家长每周都能知道哪一步有起色、哪一步还没稳。",
-          "孩子打开就知道今天先练什么，不用临时找方向。"
+          "老师人工纠偏、高优先级跟进和更紧的提醒会一起生效。",
+          "孩子打开就知道今天先练什么，家长也知道这周先盯哪一步。"
         ],
-        fits: "适合最担心回弹，想把 4 周变化真正盯住的家长。",
-        difference: "比自助会员多的是持续陪跑和更强的闭环感，不只是给方向。"
+        fits: "适合最担心回弹，想把 4 周变化真正盯住，还想让老师手动下场纠偏的家长。",
+        difference: "比自助会员多的是老师人工纠偏和更强的跟进力度，不只是继续自动追。"
       }
     ]
   };

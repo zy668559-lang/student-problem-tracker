@@ -49,7 +49,10 @@ export default async function StudentHomePage() {
         </SectionCard>
         <SectionCard title="当前会员状态" subtitle="先把边界看明白，再决定要不要往下走。">
           <div className="space-y-3">
-            <Badge tone={snapshot.membership.tone}>{snapshot.membership.tierLabel}</Badge>
+            <div className="flex flex-wrap gap-3">
+              <Badge tone={snapshot.membership.tone}>{snapshot.membership.tierLabel}</Badge>
+              <Badge tone="gold">{snapshot.membership.statusLabel}</Badge>
+            </div>
             <p className="text-base leading-8 text-ink">{snapshot.membership.label}</p>
             <p className="text-sm leading-7 text-slate">{snapshot.membership.detail}</p>
           </div>
@@ -79,7 +82,7 @@ export default async function StudentHomePage() {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Link href="/timeline" className="rounded-3xl border border-line bg-white px-5 py-5">
             <p className="text-lg font-semibold text-ink">证据时间轴</p>
-            <p className="mt-2 text-sm leading-6 text-slate">把问题、动作、变化一口气串起来看。</p>
+            <p className="mt-2 text-sm leading-6 text-slate">{snapshot.membership.canSeeTimeline ? "把问题、动作、变化一口气串起来看。" : "这条从自助会员开始开放；现在先看清这次主问题。"}</p>
           </Link>
           <Link href="/parent-overview" className="rounded-3xl border border-line bg-mist px-5 py-5">
             <p className="text-lg font-semibold text-ink">家长总览</p>
@@ -90,8 +93,8 @@ export default async function StudentHomePage() {
             <p className="mt-2 text-sm leading-6 text-slate">先看边界，再决定要不要继续追。</p>
           </Link>
           <Link href={snapshot.continueTrackingHref} className="rounded-3xl border border-accent/20 bg-accent/10 px-5 py-5">
-            <p className="text-lg font-semibold text-ink">继续追踪 4 周</p>
-            <p className="mt-2 text-sm leading-6 text-slate">如果最怕回弹，就别只看这一次。</p>
+            <p className="text-lg font-semibold text-ink">{snapshot.membership.tier === "trial" ? "申请开通自助会员" : snapshot.membership.tier === "self_service" ? "想升级陪跑会员" : "继续按陪跑节奏走"}</p>
+            <p className="mt-2 text-sm leading-6 text-slate">{snapshot.membership.tier === "trial" ? "要继续拿周报、自动复检和时间轴，就从这里往下接。" : snapshot.membership.tier === "self_service" ? "如果最怕老师什么时候该下场，就从这里问陪跑。" : "这条线已经在陪跑里了，继续顺着这周主线走。"}</p>
           </Link>
         </div>
       </SectionCard>

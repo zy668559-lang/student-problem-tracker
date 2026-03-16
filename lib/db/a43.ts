@@ -1,6 +1,7 @@
 import { getDb, getPrimaryStudentId, getReviewQueue } from "@/lib/db";
 import { getEvidenceTimelineDetail, getWeeklyBatchSchedulerSnapshot } from "@/lib/db/a4";
-import { getStudentMemorySummary, getTrialAccessSnapshot } from "@/lib/db/product";
+import { getStudentMembershipState } from "@/lib/db/membership";
+import { getStudentMemorySummary } from "@/lib/db/product";
 import type {
   AdminControlCenterMetric,
   AdminControlCenterQueueItem,
@@ -61,13 +62,20 @@ function queryStudentLeadSummary(studentId: number) {
 }
 
 function getTrackingStatusForStudent(studentId: number): TrackingStatus {
-  const access = getTrialAccessSnapshot(studentId);
-  return access.trackingStatus ?? (access.paidTrackingEnabled ? "active" : "trial");
+  const membership = getStudentMembershipState(studentId);
+  if (membership.membershipTier === "coaching" && membership.tierStatus === "active") {
+    return "active";
+  }
+  if (membership.membershipTier === "self_service" && (membership.tierStatus === "active" || membership.tierStatus === "pending")) {
+    return "intent";
+  }
+  return "trial";
 }
 
 export function getTrackingOfferDetail(studentId = getPrimaryStudentId(), diagnosisId?: number | null): TrackingOfferDetail | null {
   const timeline = getEvidenceTimelineDetail(studentId);
   if (!timeline) return null;
+  const membership = getStudentMembershipState(studentId);
 
   const db = getDb();
   const weeklyRow = timeline.latestWeeklyReportId
@@ -88,6 +96,7 @@ export function getTrackingOfferDetail(studentId = getPrimaryStudentId(), diagno
     nextPriority: timeline.nextPriority,
     continueTrackingReason: timeline.continueTrackingReason,
     trackingStatus: getTrackingStatusForStudent(studentId),
+    membership,
     benefits: [
       "每周我会把问题、动作、变化串成一条证据线，不用再靠感觉判断。",
       "同一类错因会继续盯，能看出到底是真稳了，还是只是这次碰巧做对。",
@@ -309,6 +318,7 @@ export function getAdminControlCenterSnapshot(selectedStudentId?: number | null)
     quickLinks: [
       { href: '/admin/whitelist', title: '白名单管理', detail: '先看谁能进、谁该停。' },
       { href: '/admin/students', title: '学生管理', detail: '先看档案、记忆和最近变化。' },
+      { href: '/admin/memberships', title: '会员状态', detail: '开通、延期、降级、暂停都在这里留痕。' },
       { href: '/admin/recheck-tasks', title: '复检任务', detail: '先处理今天该再检的。' },
       { href: '/admin/assets', title: '素材库', detail: '只维护会被诊断推荐到的素材。' },
       { href: '/admin/followups', title: '跟进漏斗', detail: '谁该联系、谁该回访，一眼看清。' }

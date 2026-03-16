@@ -4,6 +4,7 @@ import { ensureFollowupSchema, syncFollowupLeadFromTrackingIntent } from "@/lib/
 import { appendResultPageEvent, ensureProductSchema } from "@/lib/db/product";
 import { createTrackingIntent, ensureP25Schema } from "@/lib/db/p25";
 import { getActiveStudentId, parseSessionFromCookieHeader } from "@/lib/session";
+import type { MembershipTier } from "@/lib/types";
 
 export async function POST(request: Request) {
   ensureProductSchema();
@@ -12,7 +13,13 @@ export async function POST(request: Request) {
   ensureFollowupSchema();
   const session = parseSessionFromCookieHeader(request.headers.get("cookie"));
   const studentId = getActiveStudentId(session);
-  const body = (await request.json()) as { diagnosisId?: number; recheckTaskId?: number | null; requestedWeeks?: number; note?: string | null };
+  const body = (await request.json()) as {
+    diagnosisId?: number;
+    recheckTaskId?: number | null;
+    requestedWeeks?: number;
+    requestedTier?: MembershipTier;
+    note?: string | null;
+  };
 
   if (!body.diagnosisId) {
     return NextResponse.json({ ok: false, message: "这次还没指到哪条结果，我先没法记开通意向。" }, { status: 400 });
@@ -23,6 +30,7 @@ export async function POST(request: Request) {
     diagnosisId: body.diagnosisId,
     recheckTaskId: body.recheckTaskId ?? null,
     requestedWeeks: body.requestedWeeks ?? 4,
+    requestedTier: body.requestedTier ?? "self_service",
     note: body.note ?? null
   });
   syncLeadFollowupFromTrackingIntent(id);

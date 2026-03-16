@@ -1,5 +1,11 @@
 ﻿import { getDb, getPrimaryStudentId, upsertWeeklyReport } from "@/lib/db";
 import { appendAdminActionLog } from "@/lib/db/admin";
+import {
+  activateMembershipFromIntent,
+  ensureMembershipSchema,
+  requestMembershipFromIntent,
+  validateMembershipCapability
+} from "@/lib/db/membership";
 import { attachWeeklyReportToRecheckTasks, listAllRecheckTasks, listStudentRecheckTasks } from "@/lib/db/recheck";
 import { appendStructuredChangeLog, ensureProductSchema, upsertStudentMemorySummary } from "@/lib/db/product";
 import { generateWeeklyReport } from "@/lib/services/ai";
@@ -14,6 +20,7 @@ import type {
   ResultEventName,
   SubmissionType,
   Subject,
+  MembershipTier,
   TrackingClickDetail,
   TrackingIntentDetail,
   TrackingIntentStatus,
@@ -241,6 +248,7 @@ function mapTask(row: any): RecheckTaskDetail {
 
 export function ensureP25Schema() {
   ensureProductSchema();
+  ensureMembershipSchema();
   const db = getDb();
 
   ensureColumn("uploads", "submission_type", "submission_type TEXT DEFAULT 'diagnosis'");
@@ -486,6 +494,10 @@ export async function applyManualRecheckDecision(input: {
   }
 
   const task = mapTask(row);
+  const capability = validateMembershipCapability(task.studentId, "teacher_correction");
+  if (!capability.ok) {
+    throw new Error("membership_teacher_correction_required");
+  }
   const copy = buildDecisionCopy(task, input.decision, input.reason ?? null, input.manualPriority ?? null);
   const now = new Date().toISOString();
 
@@ -608,6 +620,7 @@ export function createTrackingIntent(input: {
   diagnosisId?: number | null;
   recheckTaskId?: number | null;
   requestedWeeks?: number;
+  requestedTier?: MembershipTier;
   note?: string | null;
 }) {
   ensureP25Schema();
@@ -615,15 +628,23 @@ export function createTrackingIntent(input: {
   const now = new Date().toISOString();
   const result = db.prepare(`
     INSERT INTO tracking_intents (
-      student_id, diagnosis_id, recheck_task_id, source, status, requested_weeks, note, submitted_at, created_at, updated_at
-    ) VALUES (?, ?, ?, 'result_cta', 'intent_submitted', ?, ?, ?, ?, ?)
-  `).run(input.studentId, input.diagnosisId ?? null, input.recheckTaskId ?? null, input.requestedWeeks ?? 4, input.note ?? null, now, now, now);
+      student_id, diagnosis_id, recheck_task_id, source, status, requested_weeks, requested_tier, note, submitted_at, created_at, updated_at
+    ) VALUES (?, ?, ?, 'result_cta', 'intent_submitted', ?, ?, ?, ?, ?, ?)
+  `).run(
+    input.studentId,
+    input.diagnosisId ?? null,
+    input.recheckTaskId ?? null,
+    input.requestedWeeks ?? 4,
+    input.requestedTier ?? "self_service",
+    input.note ?? null,
+    now,
+    now,
+    now
+  );
 
-  if (getTrackingStatus(input.studentId) !== "active") {
-    setTrackingStatus(input.studentId, "intent");
-  }
-
-  return Number(result.lastInsertRowid);
+  const intentId = Number(result.lastInsertRowid);
+  requestMembershipFromIntent(intentId);
+  return intentId;
 }
 
 export function listTrackingSnapshotAdmin(): AdminTrackingSnapshot {
@@ -641,7 +662,7 @@ export function listTrackingSnapshotAdmin(): AdminTrackingSnapshot {
   `).all() as Array<any>;
 
   const intents = db.prepare(`
-    SELECT ti.id, ti.student_id, s.name AS student_name, u.name AS parent_name, ti.diagnosis_id, ti.recheck_task_id, ti.requested_weeks, ti.note, ti.status, ti.source, ta.tracking_status, ti.submitted_at, ti.activated_at, ti.created_at
+    SELECT ti.id, ti.student_id, s.name AS student_name, u.name AS parent_name, ti.diagnosis_id, ti.recheck_task_id, ti.requested_weeks, ti.requested_tier, ti.note, ti.status, ti.source, ta.tracking_status, ti.submitted_at, ti.activated_at, ti.created_at
     FROM tracking_intents ti
     INNER JOIN students s ON s.id = ti.student_id
     INNER JOIN users u ON u.id = s.user_id
@@ -651,12 +672,12 @@ export function listTrackingSnapshotAdmin(): AdminTrackingSnapshot {
   `).all() as Array<any>;
 
   const activeRows = db.prepare(`
-    SELECT ta.id, ta.student_id, s.name AS student_name, u.name AS parent_name, ta.tracking_status, ta.updated_at
-    FROM trial_access ta
-    INNER JOIN students s ON s.id = ta.student_id
+    SELECT sms.student_id, s.name AS student_name, u.name AS parent_name, sms.membership_tier, sms.updated_at
+    FROM student_membership_state sms
+    INNER JOIN students s ON s.id = sms.student_id
     INNER JOIN users u ON u.id = s.user_id
-    WHERE ta.paid_tracking_enabled = 1 OR ta.tracking_status = 'active'
-    ORDER BY ta.updated_at DESC, ta.id DESC
+    WHERE sms.tier_status = 'active' AND sms.membership_tier != 'trial'
+    ORDER BY sms.updated_at DESC, sms.student_id DESC
   `).all() as Array<any>;
 
   return {
@@ -682,12 +703,13 @@ export function listTrackingSnapshotAdmin(): AdminTrackingSnapshot {
       status: row.status as TrackingIntentStatus,
       source: row.source,
       trackingStatus: (row.tracking_status ?? "trial") as TrackingStatus,
+      requestedTier: (row.requested_tier ?? "self_service") as MembershipTier,
       submittedAt: row.submitted_at,
       activatedAt: row.activated_at,
       createdAt: row.created_at
     })) satisfies TrackingIntentDetail[],
     activeStudents: activeRows.map((row) => ({
-      id: row.id,
+      id: row.student_id,
       studentId: row.student_id,
       studentName: row.student_name,
       parentName: row.parent_name,
@@ -696,8 +718,9 @@ export function listTrackingSnapshotAdmin(): AdminTrackingSnapshot {
       requestedWeeks: 4,
       note: "已开通 4 周追踪",
       status: "activated" as TrackingIntentStatus,
-      source: "trial_access",
-      trackingStatus: "active" as TrackingStatus,
+      source: "student_membership_state",
+      trackingStatus: row.membership_tier === "coaching" ? "active" as TrackingStatus : "intent" as TrackingStatus,
+      requestedTier: row.membership_tier as MembershipTier,
       submittedAt: row.updated_at,
       activatedAt: row.updated_at,
       createdAt: row.updated_at
@@ -715,7 +738,7 @@ export function activateTrackingIntent(intentId: number, adminSession: AppSessio
 
   const now = new Date().toISOString();
   db.prepare(`UPDATE tracking_intents SET status = 'activated', activated_at = ?, updated_at = ? WHERE id = ?`).run(now, now, intentId);
-  setTrackingStatus(intent.student_id, "active");
+  activateMembershipFromIntent(intentId, adminSession, "后台从开通意向手动确认生效。");
 
   appendAdminActionLog({
     userId: adminSession.userId,

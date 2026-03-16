@@ -1,6 +1,7 @@
 ﻿import fs from "node:fs/promises";
 import path from "node:path";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { resetStudentMembership, resetStudentTrialAccess, setStudentMembership } from "./membership-test-helpers";
 
 const fixturePath = path.join(process.cwd(), "tests", "fixtures", "sample-upload.png");
 const logStore = new Map<string, string[]>();
@@ -35,6 +36,10 @@ async function safeScreenshot(page: Page, pathName: string) {
 
 async function login(page: Page, testInfo: TestInfo) {
   await page.goto("/login");
+  if (await page.locator('input[name="email"]').count() === 0) {
+    await page.getByRole("button", { name: "退出登录" }).click();
+    await expect(page).toHaveURL(/\/login$/, { timeout: 30_000 });
+  }
   await expect(page.locator('input[name="email"]')).toBeVisible();
   await expect(page.locator('input[name="password"]')).toBeVisible();
   await safeScreenshot(page, testInfo.outputPath("01-login-page.png"));
@@ -47,6 +52,18 @@ async function login(page: Page, testInfo: TestInfo) {
   await expect(page.locator('a[href="/upload"]').first()).toBeVisible();
   await expect(page.locator("main")).toContainText("学生记忆摘要");
   await safeScreenshot(page, testInfo.outputPath("02-dashboard-page.png"));
+}
+
+async function prepareSelfService(page: Page) {
+  await page.context().clearCookies();
+  await page.goto("/login");
+  await page.locator('input[name="email"]').fill("admin@example.com");
+  await page.locator('input[name="password"]').fill("demo123");
+  await page.locator('button[type="submit"]').click();
+  await expect(page).toHaveURL(/\/dashboard$/, { timeout: 30_000 });
+  await resetStudentTrialAccess(page, [1]);
+  await resetStudentMembership(page, [1]);
+  await setStudentMembership(page, 1, "self_service", { reason: "e2e closure self service" });
 }
 
 async function uploadAndOpenDiagnosis(page: Page, testInfo: TestInfo, reportLabel: string) {
@@ -90,6 +107,7 @@ function reviewCard(page: Page, diagnosisId: number) {
 
 test("full closure: login -> upload -> diagnosis -> weekly report -> review edit -> approve", async ({ page }, testInfo) => {
   test.setTimeout(420_000);
+  await prepareSelfService(page);
   await login(page, testInfo);
   const { diagnosisId, weeklyReportId } = await uploadAndOpenDiagnosis(page, testInfo, "approve-flow");
 
@@ -129,6 +147,7 @@ test("full closure: login -> upload -> diagnosis -> weekly report -> review edit
 
 test("review queue can reject a generated diagnosis", async ({ page }, testInfo) => {
   test.setTimeout(420_000);
+  await prepareSelfService(page);
   await login(page, testInfo);
   const { diagnosisId } = await uploadAndOpenDiagnosis(page, testInfo, "reject-flow");
 

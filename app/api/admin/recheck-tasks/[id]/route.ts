@@ -25,7 +25,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       adminSession: session
     });
     return NextResponse.json({ ok: true, item: result.task, weeklyReportId: result.weeklyReportId });
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message === "membership_teacher_correction_required") {
+      return NextResponse.json({ ok: false, message: "老师人工纠偏只对陪跑会员生效，这位孩子当前还没到这档。" }, { status: 403 });
+    }
     return NextResponse.json({ ok: false, message: "这条复检任务我这边没找到。" }, { status: 404 });
   }
 }

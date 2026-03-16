@@ -1,6 +1,7 @@
 ﻿import fs from "node:fs/promises";
 import path from "node:path";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { resetStudentMembership, resetStudentTrialAccess } from "./membership-test-helpers";
 
 const fixturePath = path.join(process.cwd(), "tests", "fixtures", "sample-upload.png");
 const logStore = new Map<string, string[]>();
@@ -56,6 +57,8 @@ test("admin access is protected and admin operations work with logs", async ({ p
   }
 
   await login(page, "admin@example.com");
+  await resetStudentTrialAccess(page, [1, 2]);
+  await resetStudentMembership(page, [1, 2]);
   await page.goto("/admin");
   await expect(page.locator("main")).toContainText("运营后台");
   await page.screenshot({ path: testInfo.outputPath("02-admin-home.png"), fullPage: true });

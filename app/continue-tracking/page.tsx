@@ -72,6 +72,8 @@ export default async function ContinueTrackingPage({
         fallbackHref={fallbackHref}
         source={from}
         trackingStatus={detail.trackingStatus}
+        membershipTier={detail.membership.membershipTier}
+        tierStatus={detail.membership.tierStatus}
       />
 
       <div className="flex flex-wrap gap-3">

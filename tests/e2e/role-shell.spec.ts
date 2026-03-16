@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
+import { resetStudentMembership, resetStudentTrialAccess } from "./membership-test-helpers";
 
 const fixturePath = path.join(process.cwd(), "tests", "fixtures", "sample-upload.png");
 const logStore = new Map<string, string[]>();
@@ -30,21 +31,8 @@ async function login(page: Page, email: string) {
 
 async function resetStudentAccess(page: Page) {
   await login(page, "admin@example.com");
-  for (const id of [1, 2]) {
-    const response = await page.request.patch(`/api/admin/trial-access/${id}`, {
-      data: {
-        whitelistEnabled: true,
-        freeTrialTotal: 200,
-        freeTrialUsed: 0,
-        maxImagesPerUpload: 1,
-        enabledGrades: [],
-        enabledSubjects: ["math", "english"],
-        trackingStatus: "trial",
-        paidTrackingEnabled: false
-      }
-    });
-    expect(response.ok()).toBeTruthy();
-  }
+  await resetStudentTrialAccess(page, [1, 2]);
+  await resetStudentMembership(page, [1, 2]);
 }
 
 async function switchStudent(page: Page, studentId: string, expectedName: string) {

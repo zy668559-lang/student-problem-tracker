@@ -1,4 +1,5 @@
 ﻿import { getDb, getPrimaryStudentId } from "@/lib/db";
+import { validateMembershipCapability } from "@/lib/db/membership";
 import type {
   DiagnosisMode,
   MemorySummary,
@@ -153,9 +154,7 @@ function getDiagnosisContext(diagnosisId: number): DiagnosisContext | null {
 }
 
 function getPaidTrackingEnabled(studentId: number) {
-  const db = getDb();
-  const row = db.prepare(`SELECT paid_tracking_enabled FROM trial_access WHERE student_id = ? LIMIT 1`).get(studentId) as { paid_tracking_enabled: number } | undefined;
-  return Boolean(row?.paid_tracking_enabled ?? 0);
+  return validateMembershipCapability(studentId, "continuous_recheck").ok;
 }
 
 function getTagMetrics(studentId: number, tag: string) {
@@ -674,6 +673,41 @@ export function syncRecheckForDiagnosis(diagnosisId: number): RecheckSyncResult 
     };
   }
 
+  const membershipCapability = validateMembershipCapability(context.studentId, "continuous_recheck");
+  if (!membershipCapability.ok) {
+    updateDiagnosisRecheckFields({
+      diagnosisId,
+      taskId: null,
+      status: "dismissed",
+      outcome: "blocked",
+      summary: "这次先给基础结果，不接连续复检。",
+      nextPriority: "要继续按周追这条线，先开到自助会员以上。",
+      nextRecheckReason: membershipCapability.message ?? "当前会员边界还不支持连续复检。",
+      nextActionType: "先决定要不要开通自助会员",
+      continueTrackingReason: membershipCapability.message ?? "当前会员边界还不支持连续复检。",
+      stabilized: false,
+      studentTodayAction: "今天先把这次体检里的第一步动作做顺。",
+      studentMinimumAction: "先练 1 道最接近这次卡点的题。",
+      studentSelfCheck: "做完回头看：这次到底是看懂了，还是还需要继续追。"
+    });
+
+    return {
+      task: null,
+      diagnosisOutcome: "blocked",
+      created: false,
+      statusChanged: false,
+      previousStatus: null,
+      recheckSummary: "这次先给基础结果，不接连续复检。",
+      nextPriority: "要继续按周追这条线，先开到自助会员以上。",
+      nextRecheckReason: membershipCapability.message ?? "当前会员边界还不支持连续复检。",
+      nextActionType: "先决定要不要开通自助会员",
+      continueTrackingReason: membershipCapability.message ?? "当前会员边界还不支持连续复检。",
+      studentTodayAction: "今天先把这次体检里的第一步动作做顺。",
+      studentMinimumAction: "先练 1 道最接近这次卡点的题。",
+      studentSelfCheck: "做完回头看：这次到底是看懂了，还是还需要继续追。"
+    };
+  }
+
   const forcedTask = context.submissionType === "recheck" && context.sourceRecheckTaskId
     ? getTaskById(context.sourceRecheckTaskId, context.studentId)
     : null;
@@ -838,6 +872,3 @@ export function listAllRecheckTasks() {
   const rows = db.prepare(`SELECT * FROM recheck_tasks ORDER BY updated_at DESC, id DESC`).all();
   return rows.map((row) => mapTask(row));
 }
-
-
-

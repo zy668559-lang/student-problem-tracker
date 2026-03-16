@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { SectionCard } from "@/components/section-card";
 import { Badge } from "@/components/ui/badge";
 import { getEvidenceTimelineDetail } from "@/lib/db/a4";
+import { validateMembershipCapability } from "@/lib/db/membership";
 import { getActiveStudentId, getServerSession } from "@/lib/session";
 import { formatDate } from "@/lib/utils";
 
@@ -47,9 +48,35 @@ export default async function TimelinePage() {
   const session = await getServerSession();
   const studentId = getActiveStudentId(session);
   const detail = getEvidenceTimelineDetail(studentId);
+  const timelineCapability = validateMembershipCapability(studentId, "timeline");
 
   if (!detail) {
     notFound();
+  }
+
+  if (!timelineCapability.ok) {
+    return (
+      <div className="space-y-6">
+        <section className="rounded-panel border border-white/70 bg-white/90 p-6 shadow-panel sm:p-8">
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent/70">Timeline</p>
+          <h1 className="mt-3 text-3xl font-semibold text-ink">{detail.studentName} 的证据时间轴</h1>
+          <p className="mt-3 max-w-3xl text-sm leading-7 text-slate">{timelineCapability.message}</p>
+        </section>
+
+        <SectionCard title="现在先能看到什么" subtitle="试用先看清主问题，不直接给长线证据图">
+          <div className="space-y-4 text-sm leading-7 text-slate">
+            <p>当前最主要卡点：{detail.lastProblemSummary}</p>
+            <p>这周变化一句话：{detail.currentChangeSummary}</p>
+            <p>下轮优先级：{detail.nextPriority}</p>
+          </div>
+        </SectionCard>
+
+        <div className="flex flex-wrap gap-3">
+          <Link href="/membership" className="rounded-2xl bg-ink px-5 py-3 text-sm font-semibold text-white">去看会员边界</Link>
+          <Link href="/parent-overview" className="rounded-2xl border border-line bg-white px-5 py-3 text-sm font-semibold text-ink">先回家长总览</Link>
+        </div>
+      </div>
+    );
   }
 
   return (
