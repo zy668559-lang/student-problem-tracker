@@ -118,8 +118,24 @@ function parseObject<T>(value: string | null | undefined, fallback: T): T {
   }
 }
 
+function humanizeUiText(text: string | null | undefined) {
+  if (!text) {
+    return "";
+  }
+
+  return text
+    .replace(/\b(?:timeline|role-shell|overview|student|membership|heartbeat|followup|closure|recheck|upload)[-_][a-z0-9-]+\b/gi, "")
+    .replace(/\b(?:student_id|timeline_key|task_id|diagnosis_id|studentid|timelinekey|taskid|diagnosisid)\b\s*[:：#-]?\s*[a-z0-9-]*/gi, "")
+    .replace(/^\s*\d+\s*[：:]\s*/, "")
+    .replace(/#\d+/g, "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/^[\s，。,；;、:：-]+/, "")
+    .replace(/[\s，。,；;、:：-]+$/, "")
+    .trim();
+}
+
 function normalize(text: string | null | undefined, fallback: string) {
-  const value = text?.trim();
+  const value = humanizeUiText(text);
   return value && value.length > 0 ? value : fallback;
 }
 
@@ -501,7 +517,7 @@ export function getStudentHomeSnapshot(studentId = getPrimaryStudentId()): Stude
 
   return {
     ...summary,
-    heroSummary: `今天别换线，先把“${summary.thisWeekAction}”做顺。`
+    heroSummary: `先把“${summary.thisWeekAction}”做顺。`
   };
 }
 

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -55,34 +55,57 @@ export function MembershipTierActions({
   const isCoachingActive = membershipTier === "coaching" && tierStatus === "active";
   const isSelfServiceActive = membershipTier === "self_service" && tierStatus === "active";
   const isPending = tierStatus === "pending";
+  const primaryIsCoaching = isCoachingActive || isSelfServiceActive;
 
   return (
-    <div className="rounded-panel border border-white/70 bg-white/90 p-6 shadow-panel">
+    <div className="rounded-panel border border-white/70 bg-white/90 p-5 shadow-panel sm:p-6">
       <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent/70">Action</p>
-      <h2 className="mt-3 text-2xl font-semibold text-ink">先把这条线怎么接，说清楚。</h2>
-      <p className="mt-3 text-sm leading-7 text-slate">
-        这一块只做三件事：看清当前层级、递开通申请、决定要不要直接问陪跑。正式支付这轮先不接。
-      </p>
+      <h2 className="mt-2 text-2xl font-semibold text-ink">先决定怎么接这条线</h2>
+      <p className="mt-2 text-sm leading-6 text-slate">这一块只留一个主按钮。先把最可能的下一步接上，其他说明不再重复铺开。</p>
 
       <div className="mt-5 flex flex-wrap gap-3">
-        <button
-          type="button"
-          data-testid="membership-apply-self-service"
-          onClick={() => submitIntent("self_service")}
-          disabled={submitting !== null || isSelfServiceActive || isCoachingActive || isPending || !diagnosisId}
-          className="rounded-2xl bg-ink px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
-        >
-          {isCoachingActive ? "当前已是陪跑会员" : isSelfServiceActive ? "当前已是自助会员" : isPending ? "后台处理中" : submitting === "self_service" ? "正在记录自助申请..." : "申请开通自助会员"}
-        </button>
-        <button
-          type="button"
-          data-testid="membership-contact-companion"
-          onClick={isCoachingActive ? () => router.push(continueTrackingHref) : () => submitIntent("coaching")}
-          disabled={submitting !== null || !diagnosisId}
-          className="rounded-2xl border border-line bg-white px-5 py-3 text-sm font-semibold text-ink disabled:opacity-60"
-        >
-          {isCoachingActive ? "回陪跑节奏页" : submitting === "coaching" ? "正在记录陪跑咨询..." : "联系咨询陪跑"}
-        </button>
+        {!primaryIsCoaching ? (
+          <button
+            type="button"
+            data-testid="membership-apply-self-service"
+            onClick={() => submitIntent("self_service")}
+            disabled={submitting !== null || isSelfServiceActive || isCoachingActive || isPending || !diagnosisId}
+            className="rounded-2xl bg-ink px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
+          >
+            {isPending ? "后台处理中" : submitting === "self_service" ? "正在记录自助申请..." : "申请开通自助会员"}
+          </button>
+        ) : (
+          <button
+            type="button"
+            data-testid="membership-contact-companion"
+            onClick={isCoachingActive ? () => router.push(continueTrackingHref) : () => submitIntent("coaching")}
+            disabled={submitting !== null || !diagnosisId}
+            className="rounded-2xl bg-ink px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
+          >
+            {isCoachingActive ? "继续按陪跑节奏走" : submitting === "coaching" ? "正在记录陪跑咨询..." : "想升级陪跑会员"}
+          </button>
+        )}
+
+        {!primaryIsCoaching ? (
+          <button
+            type="button"
+            data-testid="membership-contact-companion"
+            onClick={() => submitIntent("coaching")}
+            disabled={submitting !== null || !diagnosisId}
+            className="rounded-2xl border border-line bg-white px-5 py-3 text-sm font-semibold text-slate disabled:opacity-60"
+          >
+            {submitting === "coaching" ? "正在记录陪跑咨询..." : "先问陪跑差别"}
+          </button>
+        ) : (
+          <button
+            type="button"
+            data-testid="membership-apply-self-service"
+            disabled
+            className="rounded-2xl border border-line bg-white px-5 py-3 text-sm font-semibold text-slate/70 disabled:opacity-80"
+          >
+            {isCoachingActive ? "当前已是陪跑会员" : "当前已是自助会员"}
+          </button>
+        )}
       </div>
 
       {message ? <p className="mt-4 text-sm leading-6 text-slate">{message}</p> : null}

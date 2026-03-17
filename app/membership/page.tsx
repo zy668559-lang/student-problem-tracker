@@ -1,6 +1,5 @@
-export const dynamic = "force-dynamic";
+﻿export const dynamic = "force-dynamic";
 
-import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { MembershipTierActions } from "@/components/membership-tier-actions";
 import { SectionCard } from "@/components/section-card";
@@ -20,15 +19,14 @@ export default async function MembershipPage() {
   const snapshot = getMembershipPageSnapshot(studentId);
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-panel border border-white/70 bg-white/90 p-6 shadow-panel sm:p-8" data-testid="membership-status">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+    <div className="space-y-5 sm:space-y-6">
+      <section className="rounded-panel border border-white/70 bg-white/90 p-5 shadow-panel sm:p-8" data-testid="membership-status">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-4xl">
             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent/70">Membership</p>
-            <h1 className="mt-3 text-3xl font-semibold text-ink">先看边界，再决定要不要升级。</h1>
-            <p className="mt-3 max-w-3xl text-sm leading-7 text-slate">
-              当前主卡点是“{snapshot.currentBlockPoint}”。这周最怕回弹的是“{snapshot.unstableStep}”。
-            </p>
+            <h1 className="mt-2 text-2xl font-semibold text-ink sm:text-3xl">先看差异</h1>
+            <p className="mt-2 text-base font-medium text-ink">这条线现在最该看的是：不同档位到底差在哪。</p>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate">当前主卡点是“{snapshot.currentBlockPoint}”。这周最怕回弹的是“{snapshot.unstableStep}”。</p>
           </div>
           <div className="flex flex-wrap gap-3">
             <Badge tone={snapshot.membership.tone}>{snapshot.membership.tierLabel}</Badge>
@@ -36,29 +34,23 @@ export default async function MembershipPage() {
           </div>
         </div>
 
-        <div className="mt-5 grid gap-4 lg:grid-cols-2">
-          <div className="rounded-2xl border border-line px-4 py-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent/70">当前会员状态</p>
-            <p className="mt-2 text-base leading-8 text-ink">{snapshot.membership.label}</p>
-          </div>
-          <div className="rounded-2xl border border-line px-4 py-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent/70">本周变化一句话</p>
-            <p className="mt-2 text-base leading-8 text-ink">{snapshot.weeklyOneLiner}</p>
-          </div>
+        <div className="mt-4 rounded-3xl border border-line bg-mist/40 px-5 py-4">
+          <p className="text-sm font-semibold text-ink">当前档位状态</p>
+          <p className="mt-2 text-sm leading-6 text-slate">{snapshot.membership.label}</p>
         </div>
       </section>
 
-      <section className="rounded-panel border border-white/70 bg-white/90 p-6 shadow-panel sm:p-8">
+      <section className="rounded-panel border border-white/70 bg-white/90 p-5 shadow-panel sm:p-8">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent/70">Main Chart</p>
             <h2 className="mt-2 text-2xl font-semibold text-ink">三档会员差在哪</h2>
             <p className="mt-2 text-sm leading-6 text-slate">主图只做能力项 × 3 档会员对比，不靠长文解释。</p>
           </div>
-          <p className="text-sm leading-6 text-slate">红看最卡，橙看未稳，蓝看推进，绿看已稳。</p>
+          <p className="text-sm leading-6 text-slate">{snapshot.weeklyOneLiner}</p>
         </div>
 
-        <div className="mt-6 overflow-hidden rounded-3xl border border-line">
+        <div className="mt-5 overflow-hidden rounded-3xl border border-line">
           <div className="grid grid-cols-[1.3fr_repeat(3,0.7fr)] bg-mist/70 px-4 py-3 text-sm font-semibold text-ink">
             <p>能力项</p>
             <p className="text-center">试用</p>
@@ -82,7 +74,7 @@ export default async function MembershipPage() {
         </div>
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-3">
+      <div className="grid gap-5 xl:grid-cols-3">
         {snapshot.tiers.map((tier) => (
           <SectionCard key={tier.slug} title={tier.title} subtitle={tier.highlight}>
             <div className="space-y-4">
@@ -113,27 +105,6 @@ export default async function MembershipPage() {
         membershipTier={snapshot.membership.tier}
         tierStatus={snapshot.membership.tierStatus}
       />
-
-      <SectionCard title="顺手就能接下去的入口" subtitle="只留必要入口，不把你带回功能堆里。">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <Link href="/student-home" className="rounded-3xl border border-line bg-white px-5 py-5">
-            <p className="text-lg font-semibold text-ink">回孩子首页</p>
-            <p className="mt-2 text-sm leading-6 text-slate">孩子自己打开，也知道今天先做什么。</p>
-          </Link>
-          <Link href="/parent-overview" className="rounded-3xl border border-line bg-mist px-5 py-5">
-            <p className="text-lg font-semibold text-ink">回家长总览</p>
-            <p className="mt-2 text-sm leading-6 text-slate">先看这周最该盯哪一步。</p>
-          </Link>
-          <Link href="/timeline" className="rounded-3xl border border-line bg-white px-5 py-5">
-            <p className="text-lg font-semibold text-ink">看证据时间轴</p>
-            <p className="mt-2 text-sm leading-6 text-slate">别靠感觉，顺着证据看最稳。</p>
-          </Link>
-          <Link href={snapshot.continueTrackingHref} className="rounded-3xl border border-accent/20 bg-accent/10 px-5 py-5">
-            <p className="text-lg font-semibold text-ink">继续追踪 4 周</p>
-            <p className="mt-2 text-sm leading-6 text-slate">如果最怕回弹，就顺着这条线继续接。</p>
-          </Link>
-        </div>
-      </SectionCard>
     </div>
   );
 }

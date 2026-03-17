@@ -1,4 +1,4 @@
-export const dynamic = "force-dynamic";
+﻿export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -61,20 +61,20 @@ export default async function StudentHomePage() {
   const snapshot = getStudentHomeSnapshot(studentId);
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-panel border border-white/70 bg-white/90 p-6 shadow-panel sm:p-8" data-testid="student-home-hero">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+    <div className="space-y-5 sm:space-y-6">
+      <section className="rounded-panel border border-white/70 bg-white/90 p-5 shadow-panel sm:p-8" data-testid="student-home-hero">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-4xl">
             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent/70">Student Home</p>
-            <h1 className="mt-3 text-3xl font-semibold text-ink">{snapshot.studentName}，今天先把这一条做顺。</h1>
-            <p className="mt-3 max-w-3xl text-sm leading-7 text-slate">{snapshot.heroSummary}</p>
-            <p className="mt-3 text-sm leading-6 text-slate">
+            <h1 className="mt-2 text-2xl font-semibold text-ink sm:text-3xl">今天先练这一条</h1>
+            <p className="mt-2 text-base font-medium text-ink">{snapshot.studentName}，先把“{snapshot.thisWeekAction}”做顺。</p>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate">{snapshot.heroSummary}</p>
+            <p className="mt-2 text-sm leading-6 text-slate">
               {snapshot.grade ? `${snapshot.grade}` : "年级待补"}{snapshot.school ? ` / ${snapshot.school}` : ""}
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
             <Badge tone="rose">今天先练</Badge>
-            <Badge tone="gold">本周重点</Badge>
             <Badge tone={snapshot.membership.tone}>{snapshot.membership.tierLabel}</Badge>
           </div>
         </div>
@@ -99,7 +99,7 @@ export default async function StudentHomePage() {
         </SectionCard>
       </div>
 
-      <section className="rounded-panel border border-white/70 bg-white/90 p-6 shadow-panel sm:p-8">
+      <section className="rounded-panel border border-white/70 bg-white/90 p-5 shadow-panel sm:p-8">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent/70">Main Chart</p>
@@ -109,7 +109,7 @@ export default async function StudentHomePage() {
           <p className="text-sm leading-6 text-slate">{snapshot.weeklyOneLiner}</p>
         </div>
 
-        <div className="mt-6 grid gap-4 lg:grid-cols-3">
+        <div className="mt-5 grid gap-4 lg:grid-cols-3">
           {snapshot.studentFocusChart.map((item) => {
             const tone = toneClasses[item.tone];
             return (
@@ -126,12 +126,12 @@ export default async function StudentHomePage() {
         </div>
       </section>
 
-      <section className="rounded-panel border border-accent/20 bg-accent/10 p-6 shadow-panel sm:p-8" data-testid="student-home-practice-card">
+      <section className="rounded-panel border border-accent/20 bg-accent/10 p-5 shadow-panel sm:p-8" data-testid="student-home-practice-card">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-3xl">
             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent/70">Action</p>
-            <h2 className="mt-3 text-2xl font-semibold text-ink">今天就照这一步练。</h2>
-            <p className="mt-3 text-sm leading-7 text-slate">别来回换题。你今天先把“{snapshot.thisWeekAction}”做顺。</p>
+            <h2 className="mt-2 text-2xl font-semibold text-ink">今天就练这一步</h2>
+            <p className="mt-2 text-sm leading-6 text-slate">别来回换题。先把这条主线练顺，再看下一步。</p>
           </div>
           <Link
             href={snapshot.practiceHref}
@@ -143,13 +143,13 @@ export default async function StudentHomePage() {
         </div>
       </section>
 
-      <SectionCard title="顺手就能接下去的入口" subtitle="保留少量入口，孩子和家长都看得懂。">
+      <SectionCard title="还可以看什么" subtitle="入口保留少量，主按钮只留一个。">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Link href="/timeline" className="rounded-3xl border border-line bg-white px-5 py-5">
             <p className="text-lg font-semibold text-ink">证据时间轴</p>
             <p className="mt-2 text-sm leading-6 text-slate">{snapshot.membership.canSeeTimeline ? "把问题、动作和变化顺着看。" : "这一项从自助会员开始开放。"}</p>
           </Link>
-          <Link href="/parent-overview" className="rounded-3xl border border-line bg-mist px-5 py-5">
+          <Link href="/parent-overview" className="rounded-3xl border border-line bg-white px-5 py-5">
             <p className="text-lg font-semibold text-ink">家长总览</p>
             <p className="mt-2 text-sm leading-6 text-slate">让家长一眼知道这周先盯哪一步。</p>
           </Link>
@@ -157,7 +157,7 @@ export default async function StudentHomePage() {
             <p className="text-lg font-semibold text-ink">会员分层</p>
             <p className="mt-2 text-sm leading-6 text-slate">先看差异，再决定要不要继续追。</p>
           </Link>
-          <Link href={snapshot.continueTrackingHref} className="rounded-3xl border border-accent/20 bg-accent/10 px-5 py-5">
+          <Link href={snapshot.continueTrackingHref} className="rounded-3xl border border-line bg-white px-5 py-5">
             <p className="text-lg font-semibold text-ink">{snapshot.membership.tier === "trial" ? "申请开通自助会员" : snapshot.membership.tier === "self_service" ? "想升级陪跑会员" : "继续按陪跑节奏走"}</p>
             <p className="mt-2 text-sm leading-6 text-slate">{snapshot.membership.tier === "trial" ? "要继续拿周报、自动复检和时间轴，就从这里接下去。" : snapshot.membership.tier === "self_service" ? "如果最怕反复，下一步就问陪跑。" : "这条线已经在陪跑里了，继续按这周主线走。"}</p>
           </Link>

@@ -17,8 +17,8 @@ When starting the next round, read in this order:
 
 - Branch: `feature/mvp-init`
 - Product baseline: A1-A7 landed
-- Current round: U1 visual and information reduction
-- U1 status: completed
+- Current round: U1.1 light polish
+- U1 status: completed`r`n- U1.1 status: completed
 - Latest verification status:
   - `npm run typecheck`: passed
   - `npm run build`: passed
@@ -39,7 +39,7 @@ When starting the next round, read in this order:
   - latest result
   - this week's focus
   - next recheck target
-- Membership page is now a tier-difference page instead of a long explanation page.
+- Membership page is now a tier-difference page instead of a long explanation page.`r`n- U1.1 further compresses titles, removes internal-field leakage, tightens mobile first screen, and keeps one strongest CTA per page.
 - Left navigation is regrouped into parent view, student view, and system / operations.
 - Parent overview main chart uses four-state horizontal rails.
 - Parent overview secondary chart uses 4-week change bars.

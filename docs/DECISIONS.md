@@ -65,3 +65,15 @@ Last updated: 2026-03-17
 
 - Decision: provider `429` / `Arrearage` issues are recorded as a demo stability risk, while U1 itself remains complete because the system falls back to mock diagnosis.
 - Reason: the shipped product still functions end-to-end, but real-provider reliability is not stable enough to leave unaddressed before important demos.
+
+## 2026-03-18
+
+### Record U1.1 as a polish-only round
+
+- Decision: after U1 completion, run one light U1.1 polish pass before any capability switch.
+- Reason: the key front surfaces were structurally correct, but titles, CTA hierarchy, mobile density, and internal-field leakage still made the pages feel too close to a functional backend.
+
+### Keep U1.1 inside front-end expression scope only
+
+- Decision: U1.1 only touches front-end expression on parent overview, student home, membership page, and the role-shell snapshot copy layer.
+- Reason: this pass is for maturity and readability, not for new business logic or backend change.

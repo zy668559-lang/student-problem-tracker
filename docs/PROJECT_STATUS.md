@@ -6,7 +6,7 @@ Branch baseline: `feature/mvp-init`
 ## Current Summary
 
 - Product stage: local MVP with parent / student / admin shells, real membership state management, and Heartbeat Lite.
-- U1 visual and information reduction: completed.
+- U1 visual and information reduction: completed.`r`n- U1.1 light polish: completed.
 - Latest verification baseline:
   - `npm run typecheck`: passed
   - `npm run build`: passed
@@ -102,7 +102,7 @@ Branch baseline: `feature/mvp-init`
 ### Not Completed
 
 - No payment-backed subscription flow.
-- Secondary surfaces still need later visual convergence if U1 is extended into U1.1.
+- Secondary surfaces still need later visual convergence if U1 is extended further.
 
 ## A6 Membership State Management
 
