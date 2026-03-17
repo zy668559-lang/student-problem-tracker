@@ -36,7 +36,7 @@ const adminNavItems = [
   { href: "/admin", label: "后台总览" },
   { href: "/admin/whitelist", label: "白名单" },
   { href: "/admin/students", label: "学生列表" },
-  { href: "/admin/operations", label: "审核与成本" },
+  { href: "/admin/operations", label: "审核与成单" },
   { href: "/admin/assets", label: "素材库" },
   { href: "/admin/recheck-tasks", label: "复检任务" },
   { href: "/admin/followups", label: "跟进漏斗" },
@@ -76,7 +76,7 @@ export function AppShell({
             <p className="mt-2 text-sm leading-6 text-slate">
               {isAdmin
                 ? "管理员只看运营处理，不改前台角色壳。"
-                : "当前账号下的孩子会按 student_id 分开看，上传、周报、时间轴和会员状态都不会串线。"}
+                : "当前账号下的孩子会分开看，上传、周报、时间轴和会员状态都不会串线。"}
             </p>
           </div>
         </div>

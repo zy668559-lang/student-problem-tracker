@@ -1,4 +1,4 @@
-﻿export const dynamic = "force-dynamic";
+export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -67,8 +67,7 @@ export default async function StudentHomePage() {
           <div className="max-w-4xl">
             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent/70">Student Home</p>
             <h1 className="mt-2 text-2xl font-semibold text-ink sm:text-3xl">今天先练这一条</h1>
-            <p className="mt-2 text-base font-medium text-ink">{snapshot.studentName}，先把“{snapshot.thisWeekAction}”做顺。</p>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate">{snapshot.heroSummary}</p>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate">{snapshot.studentName}，先把“{snapshot.thisWeekAction}”做顺，再看下一步。</p>
             <p className="mt-2 text-sm leading-6 text-slate">
               {snapshot.grade ? `${snapshot.grade}` : "年级待补"}{snapshot.school ? ` / ${snapshot.school}` : ""}
             </p>
@@ -131,7 +130,7 @@ export default async function StudentHomePage() {
           <div className="max-w-3xl">
             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent/70">Action</p>
             <h2 className="mt-2 text-2xl font-semibold text-ink">今天就练这一步</h2>
-            <p className="mt-2 text-sm leading-6 text-slate">别来回换题。先把这条主线练顺，再看下一步。</p>
+            <p className="mt-2 text-sm leading-6 text-slate">先练顺这一条，别来回换。</p>
           </div>
           <Link
             href={snapshot.practiceHref}

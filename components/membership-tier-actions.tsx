@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -60,8 +60,8 @@ export function MembershipTierActions({
   return (
     <div className="rounded-panel border border-white/70 bg-white/90 p-5 shadow-panel sm:p-6">
       <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent/70">Action</p>
-      <h2 className="mt-2 text-2xl font-semibold text-ink">先决定怎么接这条线</h2>
-      <p className="mt-2 text-sm leading-6 text-slate">这一块只留一个主按钮。先把最可能的下一步接上，其他说明不再重复铺开。</p>
+      <h2 className="mt-2 text-2xl font-semibold text-ink">先决定怎么接</h2>
+      <p className="mt-2 text-sm leading-6 text-slate">这里只留一个主按钮。先把最可能的下一步接上。</p>
 
       <div className="mt-5 flex flex-wrap gap-3">
         {!primaryIsCoaching ? (
@@ -94,7 +94,7 @@ export function MembershipTierActions({
             disabled={submitting !== null || !diagnosisId}
             className="rounded-2xl border border-line bg-white px-5 py-3 text-sm font-semibold text-slate disabled:opacity-60"
           >
-            {submitting === "coaching" ? "正在记录陪跑咨询..." : "先问陪跑差别"}
+            {submitting === "coaching" ? "正在记录陪跑咨询..." : "咨询陪跑差别"}
           </button>
         ) : (
           <button

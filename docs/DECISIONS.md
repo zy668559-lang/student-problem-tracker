@@ -1,79 +1,44 @@
-# Decisions
-
-Last updated: 2026-03-17
-
-## 2026-03-16
-
-### Make U1 the next single objective
-
-- Decision: the next round shifts from feature expansion to U1 visual and information reduction.
-- Reason: current product capability is already broad enough for a local MVP, but page expression still feels like a functional backend instead of a clear product surface.
-
-### Prioritize information convergence over new business logic
-
-- Decision: U1 should not add new business logic; it should only restructure page hierarchy, copy, navigation grouping, and chart expression.
-- Reason: the biggest current user-facing gap is not missing capability but overloaded presentation, mixed priorities, and weak role separation.
-
-### Parent page should answer value, student page should answer action
-
-- Decision: parent-facing first screens should emphasize why continued tracking matters, while student-facing first screens should emphasize what to do now.
-- Reason: the same data should not be presented with the same goal for both roles.
-
-### Keep only four first-level information blocks per key page
-
-- Decision: parent overview and student home should each keep only four first-level cards on the first screen.
-- Reason: too many same-weight modules make the page slower to understand and weaken the main decision signal.
-
-### Use low-cost charts only
-
-- Decision: U1 should use horizontal bars, 4-week change bars, and membership comparison bars or matrix only.
-- Reason: these chart forms reduce reading cost, while pie, radar, stacked, and complex line charts add interpretation burden at this stage.
-
-### Regroup navigation by role perspective
-
-- Decision: left navigation should be regrouped into parent view, student view, and system / operations.
-- Reason: current flat functional navigation mixes goals and forces users to parse too much before acting.
-
-### Reduce information before polishing skin
-
-- Decision: U1 should first remove or sink noisy modules before visual refinement.
-- Reason: styling cannot fix a page whose information hierarchy is still wrong.
-
-### Keep U1 out of payment / worker / infrastructure work
-
-- Decision: U1 explicitly stays out of payment, subscription settlement, worker, cron, and base-layer refactor.
-- Reason: this round is about product readability and decision speed, not platform expansion.
+﻿# DECISIONS
 
 ## 2026-03-17
 
-### Mark U1 as complete before any next-round switch
+### 为什么当前先做 U1.1
+- 决策：当前先做 `U1.1 轻精修轮`，不直接进入 `A7`。
+- 原因：`U1` 已把页面从“功能型后台”推进到“产品表达页”，但真实页面验收后仍有 4 个问题需要收口：
+  1. 家长总览页首屏标题偏长
+  2. 孩子首页仍有内部字段表达风险
+  3. 会员分层页信息重复，像说明页，不像决策页
+  4. 手机端整体长度偏长，其他孩子入口占位过重
 
-- Decision: U1 should be explicitly closed in docs before starting another round.
-- Reason: the repository truth must show that the parent overview, student home, membership page, and left navigation refactor has already landed and passed verification.
+### U1.1 只做表达收口，不做能力扩张
+- 决策：`U1.1` 只做前台表达优化，不新增业务逻辑，不改后端契约，不碰多学生隔离底座。
+- 原因：这一轮的目标是把现有页面收成更成熟的产品表达，而不是继续堆功能或改底座。
 
-### Prepare real-page acceptance before starting new capability work
+### U1.1 的核心原则
+- 决策：本轮执行时遵守以下原则：
+  1. 先结论，后解释
+  2. 首屏标题压短，不堆诊断长句
+  3. 前台彻底隐藏内部技术字段
+  4. 会员页聚焦“差异”和“升级理由”
+  5. 手机端只保留最关键路径
+  6. 不增逻辑，只做收口
+- 原因：这一轮要解决的是表达成本过高，而不是能力缺失。
 
-- Decision: export current screenshots and record page-level structure before entering any next feature round.
-- Reason: acceptance should be based on current shipped surfaces, not only code diff or memory.
+### 将 U1.1 标记为已完成
+- 决策：`U1.1` 在本轮完成后正式收口。
+- 原因：家长总览页、孩子首页、会员页、导航、手机端压缩、按钮主次和前台技术字段清理都已落地，且 `typecheck / build / playwright` 全部通过。
 
-### Keep the next-round choice between U1.1 and A7
+### 为了让验证成立，允许最小测试与构建解堵
+- 决策：本轮允许做最小的测试与构建稳定性修正，但不改变产品业务逻辑。
+- 原因：当前环境下还存在 `localhost -> ::1` 启动限制，以及旧的 `/admin/assets` 页面损坏；如果不先解堵，仓库规则要求的 `build / playwright` 无法作为有效验收口径。
 
-- Decision: the next candidate is not locked yet; choose explicitly between `U1.1` and `A7`.
-- Reason: there is still visible value in a light U1.1 polish pass, but the current baseline is also good enough to support capability work if the team wants to move on.
+### U1.1 之后的下一轮顺序
+- 决策：`U1.1` 通过后，下一轮优先进入：
+  1. 数据接口清单
+  2. 自动录入待审核队列
+  3. 人工审核确认流
+- 原因：前台表达已经够稳，下一步更值得补的是中后台审核准备链路，而不是马上切回新的能力轮。
 
-### Treat provider instability as a demo risk, not a blocker to U1 completion
-
-- Decision: provider `429` / `Arrearage` issues are recorded as a demo stability risk, while U1 itself remains complete because the system falls back to mock diagnosis.
-- Reason: the shipped product still functions end-to-end, but real-provider reliability is not stable enough to leave unaddressed before important demos.
-
-## 2026-03-18
-
-### Record U1.1 as a polish-only round
-
-- Decision: after U1 completion, run one light U1.1 polish pass before any capability switch.
-- Reason: the key front surfaces were structurally correct, but titles, CTA hierarchy, mobile density, and internal-field leakage still made the pages feel too close to a functional backend.
-
-### Keep U1.1 inside front-end expression scope only
-
-- Decision: U1.1 only touches front-end expression on parent overview, student home, membership page, and the role-shell snapshot copy layer.
-- Reason: this pass is for maturity and readability, not for new business logic or backend change.
+### 当前不直接进入 A7
+- 决策：`A7` 不作为当前紧接的下一轮。
+- 原因：在 Heartbeat Lite 之后，当前更需要的是把“数据怎么进、谁来审、如何确认”这条中后台链路先收明白。

@@ -9,21 +9,37 @@ function nextMembershipExpiry(days = 28) {
   return value.toISOString();
 }
 
+async function patchInPage(page: Page, url: string, data: unknown) {
+  return await page.evaluate(async ({ requestUrl, payload }) => {
+    const response = await fetch(requestUrl, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    return {
+      ok: response.ok,
+      status: response.status,
+      text: await response.text()
+    };
+  }, {
+    requestUrl: url,
+    payload: data
+  });
+}
+
 export async function resetStudentTrialAccess(page: Page, studentIds: number[] = [1, 2]) {
   for (const id of studentIds) {
-    const response = await page.request.patch(`/api/admin/trial-access/${id}`, {
-      data: {
-        whitelistEnabled: true,
-        freeTrialTotal: 200,
-        freeTrialUsed: 0,
-        maxImagesPerUpload: 1,
-        enabledGrades: [],
-        enabledSubjects: ["math", "english"],
-        trackingStatus: "trial",
-        paidTrackingEnabled: false
-      }
+    const result = await patchInPage(page, `/api/admin/trial-access/${id}`, {
+      whitelistEnabled: true,
+      freeTrialTotal: 200,
+      freeTrialUsed: 0,
+      maxImagesPerUpload: 1,
+      enabledGrades: [],
+      enabledSubjects: ["math", "english"],
+      trackingStatus: "trial",
+      paidTrackingEnabled: false
     });
-    expect(response.ok()).toBeTruthy();
+    expect(result.ok, `resetStudentTrialAccess(${id}) failed: ${result.status} ${result.text}`).toBeTruthy();
   }
 }
 
@@ -41,16 +57,14 @@ export async function setStudentMembership(
   const effectiveTo = membershipTier === "trial"
     ? null
     : options?.effectiveTo ?? nextMembershipExpiry();
-  const response = await page.request.patch(`/api/admin/memberships/${studentId}`, {
-    data: {
-      action,
-      membershipTier,
-      effectiveTo,
-      reason: options?.reason ?? `e2e set ${membershipTier}`
-    }
+  const result = await patchInPage(page, `/api/admin/memberships/${studentId}`, {
+    action,
+    membershipTier,
+    effectiveTo,
+    reason: options?.reason ?? `e2e set ${membershipTier}`
   });
-  expect(response.ok()).toBeTruthy();
-  return await response.json();
+  expect(result.ok, `setStudentMembership(${studentId}, ${membershipTier}) failed: ${result.status} ${result.text}`).toBeTruthy();
+  return JSON.parse(result.text) as unknown;
 }
 
 export async function resetStudentMembership(page: Page, studentIds: number[] = [1, 2]) {

@@ -1,78 +1,48 @@
-# Handoff
-
-Last updated: 2026-03-17
+﻿# HANDOFF
 
 ## Read First
-
-When starting the next round, read in this order:
-
+开始下一轮前，按这个顺序读取：
 1. `docs/PROJECT_STATUS.md`
 2. `docs/CURRENT_SPRINT.md`
 3. `docs/HANDOFF.md`
 4. `docs/OPENCLAW_ADAPTATION.md`
 5. `docs/DECISIONS.md`
 6. `docs/U1_VISUAL_INFO_REDUCTION.md`
+7. `docs/U11_FINE_TUNING.md`
 
 ## Current Repository State
+- 分支：`feature/mvp-init`
+- 当前轮次：`U1.1 轻精修轮`
+- 当前状态：已完成并通过验证
+- 最新验证：
+  - `npm run typecheck`：通过
+  - `npm run build`：通过
+  - `npm exec playwright test`：通过（`30 passed`）
 
-- Branch: `feature/mvp-init`
-- Product baseline: A1-A7 landed
-- Current round: U1.1 light polish
-- U1 status: completed`r`n- U1.1 status: completed
-- Latest verification status:
-  - `npm run typecheck`: passed
-  - `npm run build`: passed
-  - `npm exec playwright test`: passed (`30 passed`)
-- Latest push status:
-  - `github/feature/mvp-init`: pushed
-  - `gitee/feature/mvp-init`: pushed
+## U1.1 本轮实际完成了什么
+1. 家长总览页首屏标题进一步压短，保留“结论 + 一行解释”。
+2. 孩子首页首屏标题进一步压短，继续把“今天先练这个”作为唯一核心动作。
+3. 会员分层页删掉重复说明和分散入口，收成差异表达页。
+4. 手机端信息继续收紧，“其他孩子入口”默认折叠后再横滑查看。
+5. 左侧导航与按钮主次继续收口，次级入口被进一步弱化。
+6. 前台清掉了 `student_id` 这类内部技术表达。
 
-## U1 Completion Snapshot
+## 本轮额外做的验证解堵
+- 修正了 `app/admin/assets/page.tsx` 中旧的损坏展示文案，恢复全仓 `build` 基线。
+- 调整了 `playwright.config.ts` 的本地测试主机到 `127.0.0.1`，避免当前环境下 `localhost / ::1` 监听失败。
+- 收紧了 `tests/e2e/admin.spec.ts` 和 `tests/e2e/membership-test-helpers.ts` 的会话与前置逻辑，让全量 e2e 在当前环境下稳定复现。
 
-- Parent overview first screen now keeps exactly four first-level blocks:
-  - current biggest blocker
-  - what to do this week
-  - the still-unstable step
-  - why continued tracking still matters
-- Student home first screen now keeps exactly four first-level blocks:
-  - do this first today
-  - latest result
-  - this week's focus
-  - next recheck target
-- Membership page is now a tier-difference page instead of a long explanation page.`r`n- U1.1 further compresses titles, removes internal-field leakage, tightens mobile first screen, and keeps one strongest CTA per page.
-- Left navigation is regrouped into parent view, student view, and system / operations.
-- Parent overview main chart uses four-state horizontal rails.
-- Parent overview secondary chart uses 4-week change bars.
-- Membership page main chart uses capability-by-tier comparison.
-- Existing role-shell, membership, and multi-student isolation e2e anchors still pass.
+## 当前还没做什么
+- 数据接口清单未整理
+- 自动录入待审核队列未实现
+- 人工审核确认流未实现
+- 正式支付 / 订阅未实现
+- 独立 worker / cron 未实现
 
-## Current Not Completed
+## Next Step
+下一轮优先进入：
+1. 数据接口清单
+2. 自动录入待审核队列
+3. 人工审核确认流
 
-- U1 only refactored the three key role-shell surfaces plus left navigation.
-- Secondary pages such as diagnosis, timeline detail, compare, and some admin pages are not visually converged yet.
-- Mobile polish exists only as a validation pass, not as a dedicated refinement round.
-- External real-provider stability is still not guaranteed; the system may fall back to mock diagnosis during demos.
-
-## Screenshot Output
-
-Latest acceptance screenshots are stored at:
-
-- `artifacts/u1-acceptance/parent-overview-desktop.png`
-- `artifacts/u1-acceptance/student-home-desktop.png`
-- `artifacts/u1-acceptance/membership-desktop.png`
-- `artifacts/u1-acceptance/parent-overview-mobile.png`
-
-## Next Candidate
-
-The next round should be explicitly chosen before coding:
-
-- `U1.1`: light polish for mobile, spacing, copy consistency, and secondary-surface convergence
-- `A7`: capability round on top of the current role shell baseline
-
-## Constraints Still In Force
-
-- Do not build official payment / subscription charging yet.
-- Do not introduce worker / cron yet.
-- Do not do large-scale base-layer refactor.
-- Do not change role-shell backend contracts unless a future sprint explicitly says so.
-- Keep multi-student isolation and role isolation intact.
+当前不建议直接切入 `A7`。

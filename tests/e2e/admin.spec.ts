@@ -1,4 +1,4 @@
-﻿import fs from "node:fs/promises";
+import fs from "node:fs/promises";
 import path from "node:path";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
 import { resetStudentMembership, resetStudentTrialAccess } from "./membership-test-helpers";
@@ -24,6 +24,7 @@ test.afterEach(async ({}, testInfo) => {
 });
 
 async function login(page: Page, email: string) {
+  await page.context().clearCookies();
   await page.goto("/login");
   await page.locator('input[name="email"]').fill(email);
   await page.locator('input[name="password"]').fill("demo123");
@@ -59,7 +60,8 @@ test("admin access is protected and admin operations work with logs", async ({ p
   await login(page, "admin@example.com");
   await resetStudentTrialAccess(page, [1, 2]);
   await resetStudentMembership(page, [1, 2]);
-  await page.goto("/admin");
+  await page.goto(`/admin?run=${Date.now()}`);
+  await expect(page).toHaveURL(/\/admin/, { timeout: 30_000 });
   await expect(page.locator("main")).toContainText("运营后台");
   await page.screenshot({ path: testInfo.outputPath("02-admin-home.png"), fullPage: true });
 

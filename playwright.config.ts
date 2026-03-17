@@ -1,4 +1,4 @@
-﻿import { defineConfig, devices } from "@playwright/test";
+import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -15,15 +15,15 @@ export default defineConfig({
   ],
   outputDir: "test-results/artifacts",
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: "http://127.0.0.1:3000",
     trace: "on",
     screenshot: "only-on-failure",
     video: "retain-on-failure"
   },
   webServer: {
-    command: "npm.cmd run start -- --hostname localhost --port 3000",
-    url: "http://localhost:3000/login",
-    reuseExistingServer: false,
+    command: "npm.cmd run start -- --hostname 127.0.0.1 --port 3000",
+    url: "http://127.0.0.1:3000/login",
+    reuseExistingServer: true,
     timeout: 120_000
   },
   projects: [

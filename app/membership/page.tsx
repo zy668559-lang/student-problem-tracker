@@ -1,4 +1,4 @@
-﻿export const dynamic = "force-dynamic";
+export const dynamic = "force-dynamic";
 
 import { Badge } from "@/components/ui/badge";
 import { MembershipTierActions } from "@/components/membership-tier-actions";
@@ -25,8 +25,7 @@ export default async function MembershipPage() {
           <div className="max-w-4xl">
             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent/70">Membership</p>
             <h1 className="mt-2 text-2xl font-semibold text-ink sm:text-3xl">先看差异</h1>
-            <p className="mt-2 text-base font-medium text-ink">这条线现在最该看的是：不同档位到底差在哪。</p>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate">当前主卡点是“{snapshot.currentBlockPoint}”。这周最怕回弹的是“{snapshot.unstableStep}”。</p>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate">先看三档差在哪，再决定这条线怎么接。当前最卡“{snapshot.currentBlockPoint}”，最怕回弹“{snapshot.unstableStep}”。</p>
           </div>
           <div className="flex flex-wrap gap-3">
             <Badge tone={snapshot.membership.tone}>{snapshot.membership.tierLabel}</Badge>
@@ -41,13 +40,10 @@ export default async function MembershipPage() {
       </section>
 
       <section className="rounded-panel border border-white/70 bg-white/90 p-5 shadow-panel sm:p-8">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent/70">Main Chart</p>
-            <h2 className="mt-2 text-2xl font-semibold text-ink">三档会员差在哪</h2>
-            <p className="mt-2 text-sm leading-6 text-slate">主图只做能力项 × 3 档会员对比，不靠长文解释。</p>
-          </div>
-          <p className="text-sm leading-6 text-slate">{snapshot.weeklyOneLiner}</p>
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent/70">Main Chart</p>
+          <h2 className="mt-2 text-2xl font-semibold text-ink">三档会员差在哪</h2>
+          <p className="mt-2 text-sm leading-6 text-slate">主图只做能力项 × 3 档会员对比，不再重复铺说明。</p>
         </div>
 
         <div className="mt-5 overflow-hidden rounded-3xl border border-line">

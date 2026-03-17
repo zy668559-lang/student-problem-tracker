@@ -1,4 +1,4 @@
-﻿export const dynamic = "force-dynamic";
+export const dynamic = "force-dynamic";
 
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -81,8 +81,7 @@ export default async function ParentOverviewPage() {
           <div className="max-w-4xl">
             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent/70">Parent Overview</p>
             <h1 className="mt-2 text-2xl font-semibold text-ink sm:text-3xl">先盯这一条</h1>
-            <p className="mt-2 text-base font-medium text-ink">{active.studentName} 这周先看“{active.unstableStep}”。</p>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate">{active.currentStatus}</p>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate">{active.studentName} 这周先看“{active.unstableStep}”，先把这一步盯稳。</p>
           </div>
           <div className="flex flex-wrap gap-3">
             <Badge tone="accent">当前查看</Badge>
@@ -187,7 +186,7 @@ export default async function ParentOverviewPage() {
               studentId={active.studentId}
               href="/membership"
               testId="parent-overview-active-membership"
-              className="rounded-2xl border border-line bg-white px-5 py-3 text-sm font-semibold text-slate"
+              className="inline-flex items-center px-2 py-3 text-sm font-medium text-slate underline-offset-4 transition hover:text-ink hover:underline"
             >
               看会员差异
             </StudentScopedLink>
@@ -281,7 +280,7 @@ export default async function ParentOverviewPage() {
                     studentId={student.studentId}
                     href="/membership"
                     testId={`parent-overview-membership-${student.studentId}`}
-                    className="rounded-2xl border border-line bg-mist px-4 py-3 text-sm font-semibold text-slate"
+                    className="inline-flex items-center px-1 py-3 text-sm font-medium text-slate underline-offset-4 transition hover:text-ink hover:underline"
                   >
                     看会员差异
                   </StudentScopedLink>
