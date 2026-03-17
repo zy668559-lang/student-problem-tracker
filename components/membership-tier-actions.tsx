@@ -34,7 +34,7 @@ export function MembershipTierActions({
         requestedWeeks: 4,
         requestedTier,
         note: requestedTier === "coaching"
-          ? "会员页：家长想直接咨询陪跑，重点需要老师下场纠偏。"
+          ? "会员页：家长想直接咨询陪跑，重点是希望老师帮着盯。"
           : "会员页：家长先申请自助会员，想把这条线继续接下去。"
       })
     });
@@ -46,8 +46,8 @@ export function MembershipTierActions({
     }
 
     setMessage(requestedTier === "coaching"
-      ? "陪跑会员申请已经记下。后台确认后，老师纠偏和更紧的跟进会一起生效。"
-      : "自助会员申请已经记下。后台确认后，这条线的周报、自动复检和时间轴会继续接上。");
+      ? "陪跑申请已经记下。后台确认后，老师会一起帮着盯，提醒也会更紧。"
+      : "继续跟的申请已经记下。后台确认后，这条线的每周小结、自动回看和变化记录会继续接上。");
     setSubmitting(null);
     router.refresh();
   }
@@ -59,9 +59,9 @@ export function MembershipTierActions({
 
   return (
     <div className="rounded-panel border border-white/70 bg-white/90 p-5 shadow-panel sm:p-6">
-      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent/70">Action</p>
-      <h2 className="mt-2 text-2xl font-semibold text-ink">先决定怎么接</h2>
-      <p className="mt-2 text-sm leading-6 text-slate">这里只留一个主按钮。先把最可能的下一步接上。</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent/70">下一步怎么接</p>
+      <h2 className="mt-2 text-2xl font-semibold text-ink">先决定怎么接着盯</h2>
+      <p className="mt-2 text-sm leading-6 text-slate">这里只留一个主按钮。先把最适合你现在的那一步接上。</p>
 
       <div className="mt-5 flex flex-wrap gap-3">
         {!primaryIsCoaching ? (
@@ -72,7 +72,7 @@ export function MembershipTierActions({
             disabled={submitting !== null || isSelfServiceActive || isCoachingActive || isPending || !diagnosisId}
             className="rounded-2xl bg-ink px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
           >
-            {isPending ? "后台处理中" : submitting === "self_service" ? "正在记录自助申请..." : "申请开通自助会员"}
+            {isPending ? "后台处理中" : submitting === "self_service" ? "正在记录自助申请..." : "继续让系统陪着盯"}
           </button>
         ) : (
           <button
@@ -94,7 +94,7 @@ export function MembershipTierActions({
             disabled={submitting !== null || !diagnosisId}
             className="rounded-2xl border border-line bg-white px-5 py-3 text-sm font-semibold text-slate disabled:opacity-60"
           >
-            {submitting === "coaching" ? "正在记录陪跑咨询..." : "咨询陪跑差别"}
+            {submitting === "coaching" ? "正在记录陪跑咨询..." : "看看陪跑多了什么"}
           </button>
         ) : (
           <button
@@ -109,7 +109,7 @@ export function MembershipTierActions({
       </div>
 
       {message ? <p className="mt-4 text-sm leading-6 text-slate">{message}</p> : null}
-      {!diagnosisId ? <p className="mt-4 text-sm leading-6 text-slate">这位孩子还没落下一条正式诊断，我先不乱记会员申请。先去跑出一条结果更稳。</p> : null}
+      {!diagnosisId ? <p className="mt-4 text-sm leading-6 text-slate">这位孩子还没先拿到一条正式结果，我先不乱记申请。先把第一条结果跑出来更稳。</p> : null}
     </div>
   );
 }

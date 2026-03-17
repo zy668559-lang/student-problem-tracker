@@ -84,7 +84,7 @@ test("recheck upload lands on dedicated compare page with parent-friendly summar
   await expect(page.locator("main")).toContainText("下轮优先级");
   await expect(page.locator("main")).toContainText("建议继续追踪理由");
   await expect(page.locator("main")).toContainText("继续追踪 4 周");
-  await page.screenshot({ path: testInfo.outputPath("01-compare-page.png"), fullPage: true });
+  await page.locator("main").screenshot({ path: testInfo.outputPath("01-compare-page.png") });
 });
 
 test("manual recheck correction writes back priority and weekly report", async ({ page }, testInfo) => {
@@ -106,7 +106,7 @@ test("manual recheck correction writes back priority and weekly report", async (
   await taskCard.getByRole("button", { name: "保存人工纠偏" }).click();
   await expect(taskCard.locator(`input[name="priority-${first.recheckTaskId}"]`)).toHaveValue("下轮先继续轰炸这个高频错因，先别换线。", { timeout: 30_000 });
   await expect(taskCard.locator(`textarea[name="reason-${first.recheckTaskId}"]`)).toHaveValue(/这块最近重复回来得太勤/, { timeout: 30_000 });
-  await page.screenshot({ path: testInfo.outputPath("02-admin-recheck-manual.png"), fullPage: true });
+  await page.locator("main").screenshot({ path: testInfo.outputPath("02-admin-recheck-manual.png") });
 
   await login(page, "parent@example.com");
   await page.goto("/dashboard");
@@ -142,7 +142,7 @@ test("weekly scheduler and follow-up funnel are visible and editable in admin", 
   await expect(page.locator('[data-testid^="weekly-batch-run-"]').first()).toBeVisible({ timeout: 30_000 });
   await page.getByRole("button", { name: "手动重跑本周周报" }).click();
   await expect(page.locator("main")).toContainText(/上次状态：成功|上次状态：正在跑/, { timeout: 30_000 });
-  await page.screenshot({ path: testInfo.outputPath("03-operations-scheduler.png"), fullPage: true });
+  await page.locator("main").screenshot({ path: testInfo.outputPath("03-operations-scheduler.png") });
 
   await page.goto("/admin/followups");
   const card = followupLeadCard(page, intentPayload.id);
@@ -157,5 +157,5 @@ test("weekly scheduler and follow-up funnel are visible and editable in admin", 
   await card.locator('select[name^="followup-action-"]').selectOption("activated");
   await card.getByRole("button", { name: "保存这条跟进" }).click();
   await expect(card).toContainText("当前状态：已开通", { timeout: 30_000 });
-  await page.screenshot({ path: testInfo.outputPath("04-followup-funnel.png"), fullPage: true });
+  await card.screenshot({ path: testInfo.outputPath("04-followup-funnel.png") });
 });

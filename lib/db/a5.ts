@@ -123,15 +123,50 @@ function humanizeUiText(text: string | null | undefined) {
     return "";
   }
 
-  return text
-    .replace(/\b(?:timeline|role-shell|overview|student|membership|heartbeat|followup|closure|recheck|upload)[-_][a-z0-9-]+\b/gi, "")
-    .replace(/\b(?:student_id|timeline_key|task_id|diagnosis_id|studentid|timelinekey|taskid|diagnosisid)\b\s*[:：#-]?\s*[a-z0-9-]*/gi, "")
-    .replace(/^\s*\d+\s*[：:]\s*/, "")
-    .replace(/#\d+/g, "")
+  let value = text
+    .replace(/\b(?:timeline|role-shell|overview|student|membership|heartbeat|followup|closure|recheck|upload)[-_][a-z0-9-]+\b/gi, " ")
+    .replace(/\b(?:student_id|timeline_key|task_id|diagnosis_id|studentid|timelinekey|taskid|diagnosisid)\b\s*[\u003A\uFF1A-]?\s*[a-z0-9-]*/gi, " ")
+    .replace(/[\u201C\u201D"'\x60]/g, "")
+    .replace(/[\uFF03#]\d+/g, "")
+    .replace(/\u5b66\u751f\u81ea\u8ff0/gu, "")
+    .replace(/\u8bc1\u636e\u65f6\u95f4\u8f74/gu, "\u53d8\u5316\u8bb0\u5f55")
+    .replace(/\u65f6\u95f4\u8f74/gu, "\u53d8\u5316\u8bb0\u5f55")
+    .replace(/\u5b9a\u5411\u7d20\u6750/gu, "配套练习")
+    .replace(/\u7d20\u6750\u63a8\u8350/gu, "配套练习")
+    .replace(/\u8001\u5e08\u7ea0\u504f/gu, "老师帮你盯")
+    .replace(/\u5468\u62a5/gu, "每周小结")
+    .replace(/\u81ea\u52a8\u590d\u68c0/gu, "自动回看")
+    .replace(/\u590d\u68c0/gu, "回看")
+    .replace(/\u7ee7\u7eed\u8ffd\u8e2a/gu, "继续跟")
     .replace(/\s{2,}/g, " ")
-    .replace(/^[\s，。,；;、:：-]+/, "")
-    .replace(/[\s，。,；;、:：-]+$/, "")
     .trim();
+
+  for (let index = 0; index < 2; index += 1) {
+    value = value.replace(/^[^\u003A\uFF1A\n]{0,24}[\u003A\uFF1A]\s*/, "").trim();
+  }
+
+  value = value
+    .replace(/^[\uFF0C\u3002\uFF1B\u3001\s]+|[\uFF0C\u3002\uFF1B\u3001\s]+$/g, "")
+    .replace(/[\uFF0C\u3002\uFF1B\u3001]\s*[\uFF0C\u3002\uFF1B\u3001]+/g, "\uFF0C")
+    .trim();
+
+  if (!value) {
+    return "";
+  }
+
+  if (value.includes("\u4e0d\u518d\u770b\u4e00\u8f6e")) {
+    return "\u8fd9\u4e00\u6b65\u8fd8\u5f97\u56de\u5934\u518d\u770b\uff0c\u4e0d\u7136\u5f88\u5bb9\u6613\u6389\u56de\u53bb";
+  }
+
+  if (value.includes("\u4f1a\u4e00\u534a") || value.includes("\u57fa\u672c\u7a33\u4f4f")) {
+    return "\u4e0b\u8f6e\u5148\u628a\u8fd9\u7c7b\u9898\u62c9\u5230\u57fa\u672c\u7a33\u4f4f";
+  }
+
+  if ((value.includes("\u7ee7\u7eed\u8ffd\u8e2a") || value.includes("\u7ee7\u7eed\u8ddf")) && value.includes("\u56de\u5f39")) {
+    return "\u8fd9\u6761\u7ebf\u8fd8\u4e0d\u80fd\u653e\u624b\uff0c\u4e0d\u7ee7\u7eed\u8ffd\u5c31\u5bb9\u6613\u56de\u5f39";
+  }
+
+  return value;
 }
 
 function normalize(text: string | null | undefined, fallback: string) {
@@ -208,8 +243,8 @@ function getMembershipStatusCard(studentId: number): MembershipStatusCard {
       : "trial";
 
   return {
-    label: membership.summary,
-    detail: membership.benefitSummary[0] ?? "先把这一条主线接住。",
+    label: humanizeUiText(membership.summary) || membership.summary,
+    detail: humanizeUiText(membership.benefitSummary[0]) || membership.benefitSummary[0] || "先把这一条主线接住。",
     tier: membership.membershipTier,
     tierStatus: membership.tierStatus,
     tierLabel: membership.membershipTier === "coaching" ? "陪跑会员" : membership.membershipTier === "self_service" ? "自助会员" : "试用",
@@ -376,7 +411,7 @@ function buildParentMainChart(input: {
       tone: "orange"
     },
     {
-      label: "复检状态",
+      label: "回看情况",
       detail: input.latestRecheckResult,
       tone: stateToneClass(input.priorityTaskStatus)
     }
@@ -410,12 +445,12 @@ function buildStudentFocusChart(input: {
 
 function getCapabilityRows(): CapabilityCompareRow[] {
   return [
-    { label: "连续复检", trial: "off", selfService: "on", coaching: "high" },
-    { label: "每周周报", trial: "off", selfService: "on", coaching: "high" },
-    { label: "证据时间轴", trial: "off", selfService: "on", coaching: "high" },
-    { label: "定向素材", trial: "off", selfService: "on", coaching: "high" },
-    { label: "老师纠偏", trial: "off", selfService: "off", coaching: "high" },
-    { label: "提醒力度", trial: "limited", selfService: "on", coaching: "high" }
+    { label: "连续回看", trial: "off", selfService: "on", coaching: "high" },
+    { label: "每周小结", trial: "off", selfService: "on", coaching: "high" },
+    { label: "变化记录", trial: "off", selfService: "on", coaching: "high" },
+    { label: "配套练习", trial: "off", selfService: "on", coaching: "high" },
+    { label: "老师帮你盯", trial: "off", selfService: "off", coaching: "high" },
+    { label: "盯得多紧", trial: "limited", selfService: "on", coaching: "high" }
   ];
 }
 
@@ -562,7 +597,7 @@ export function getMembershipPageSnapshot(studentId = getPrimaryStudentId()): Me
         gets: [
           "先看清孩子到底卡在哪。",
           "知道这次先做什么，不再靠猜。",
-          "先不给连续复检、时间轴和老师纠偏。"
+          "先不给连续回看、变化记录和老师帮你盯。"
         ],
         fits: "适合刚进来，先想看清这条问题线值不值得继续追的家长。",
         difference: "这一档负责看明白，不负责把变化连续接四周。"
@@ -572,8 +607,8 @@ export function getMembershipPageSnapshot(studentId = getPrimaryStudentId()): Me
         title: "自助会员",
         highlight: "你自己推进，我把主线和节奏接起来。",
         gets: [
-          "可以继续上传、看周报、看时间轴。",
-          "自动复检和定向素材会顺着同一条线往下接。",
+          "可以继续上传、看每周小结、看变化记录。",
+          "自动回看和配套练习会顺着同一条线往下接。",
           "家长能每周看到下一步和还没稳的那一步。"
         ],
         fits: "适合愿意自己执行，但不想每周重新判断重点的家长。",
@@ -582,14 +617,14 @@ export function getMembershipPageSnapshot(studentId = getPrimaryStudentId()): Me
       {
         slug: "coaching",
         title: "陪跑会员",
-        highlight: "问题、动作、变化和老师纠偏一起接上。",
+        highlight: "问题、动作、变化和老师帮你盯一起接上。",
         gets: [
-          "复检、周报、时间轴和继续追踪一条线走到底。",
-          "老师人工纠偏和更紧的提醒会一起生效。",
+          "回看、每周小结、变化记录和继续追踪一条线走到底。",
+          "老师帮你盯和更紧的提醒会一起生效。",
           "孩子知道今天先练什么，家长知道这周先盯哪一步。"
         ],
-        fits: "适合最怕回弹、想把 4 周变化盯住，还希望老师下场纠偏的家长。",
-        difference: "比自助会员多的是老师下场和更强的跟进力度。"
+        fits: "适合最怕回弹、想把 4 周变化盯住，还希望老师一起帮着看的家长。",
+        difference: "比自助多的是老师一起帮着盯，跟得也更紧。"
       }
     ]
   };

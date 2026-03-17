@@ -12,7 +12,7 @@ const parentNavGroups = [
     title: "家长视角",
     items: [
       { href: "/parent-overview", label: "家长总览" },
-      { href: "/membership", label: "会员分层" }
+      { href: "/membership", label: "\u4e09\u79cd\u65b9\u5f0f\u5dee\u5728\u54ea" }
     ]
   },
   {
@@ -27,7 +27,7 @@ const parentNavGroups = [
     title: "系统运营",
     items: [
       { href: "/upload", label: "上传" },
-      { href: "/timeline", label: "证据时间轴" }
+      { href: "/timeline", label: "\u53d8\u5316\u8bb0\u5f55" }
     ]
   }
 ] as const;
@@ -76,7 +76,7 @@ export function AppShell({
             <p className="mt-2 text-sm leading-6 text-slate">
               {isAdmin
                 ? "管理员只看运营处理，不改前台角色壳。"
-                : "当前账号下的孩子会分开看，上传、周报、时间轴和会员状态都不会串线。"}
+                : "\u5f53\u524d\u8d26\u53f7\u4e0b\u7684\u5b69\u5b50\u4f1a\u5206\u5f00\u770b\uff0c\u4e0a\u4f20\u3001\u6bcf\u5468\u5c0f\u7ed3\u3001\u53d8\u5316\u8bb0\u5f55\u548c\u4f1a\u5458\u72b6\u6001\u90fd\u4e0d\u4f1a\u4e32\u7ebf\u3002"}
             </p>
           </div>
         </div>

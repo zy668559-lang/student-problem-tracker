@@ -31,11 +31,11 @@ type MembershipStateDraft = {
 
 const DEFAULT_MEMBER_DAYS = 28;
 const CAPABILITY_MESSAGES: Record<MembershipCapability, string> = {
-  timeline: "证据时间轴从自助会员开始开放。试用这轮先帮你看清主问题，还不接连续证据线。",
-  continuous_recheck: "试用这轮只先做 1 次体检，不接连续复检。想继续按周追，就得开到自助会员以上。",
-  weekly_report: "试用只先给基础结果，不接连续周报。想看按周变化，得进自助会员以上。",
-  teacher_correction: "老师人工纠偏只在陪跑会员里开放。自助会员能自动复检，但老师不会手动下场改。",
-  targeted_assets: "定向素材推荐从自助会员开始开放。试用这轮先把主问题看清，不额外给连续素材。"
+  timeline: "变化记录从自助会员开始开放。试用这轮先帮你看清主问题，还不接连续变化线。",
+  continuous_recheck: "试用这轮只先做 1 次体检，不接连续回看。想继续按周盯，就得开到自助会员以上。",
+  weekly_report: "试用只先给基础结果，不接连续每周小结。想看按周变化，得进自助会员以上。",
+  teacher_correction: "老师帮你盯只在陪跑会员里开放。自助会员能自动回看，但老师不会手动下场。",
+  targeted_assets: "配套练习从自助会员开始开放。试用这轮先把主问题看清，不额外往下发练习。"
 };
 
 const ACTIVE_BENEFITS: Record<MembershipTier, MembershipBenefitFlags> = {
@@ -165,21 +165,21 @@ function buildBenefitSummary(tier: MembershipTier) {
   switch (tier) {
     case "self_service":
       return [
-        "可以周期上传、看周报、看证据时间轴。",
-        "自动复检和定向素材推荐会跟着这条线走。",
-        "这档还是以系统自动追踪为主，老师不手动下场纠偏。"
+        "可以继续上传、看每周小结、看变化记录。",
+        "自动回看和配套练习会跟着这条线走。",
+        "这档还是以系统自动跟为主，老师不会手动下场。"
       ];
     case "coaching":
       return [
-        "更高频复检、老师人工纠偏、提醒更紧。",
+        "回看更密、老师帮你盯、提醒更紧。",
         "家长看到的不只是结果，还会拿到更强的动作建议。",
         "后台跟进会按高优先级挂起，不会跟普通线索一个力度。"
       ];
     default:
       return [
         "只先做 1 次体检，帮你把主问题看清楚。",
-        "这轮只给基础结果，不接连续复检和周报。",
-        "老师人工纠偏和时间轴证据线都还没开放。"
+        "这轮只给基础结果，不接连续回看和每周小结。",
+        "老师帮你盯和变化记录都还没开放。"
       ];
   }
 }
@@ -194,10 +194,10 @@ function buildBenefitFlags(tier: MembershipTier, status: MembershipTierStatus, o
 
 function buildSummary(tier: MembershipTier, status: MembershipTierStatus) {
   if (status === "pending" && tier === "self_service") {
-    return "这位孩子已经递上自助会员申请了。现在先按试用边界继续看，等后台手动开通后再接连续周报和自动复检。";
+    return "这位孩子已经递上继续跟的申请了。现在先按试用边界看，等后台手动开通后再接每周小结和自动回看。";
   }
   if (status === "pending" && tier === "coaching") {
-    return "这位孩子已经递上陪跑会员申请了。现在先按原边界看，等后台手动开通后老师才会下场人工纠偏。";
+    return "这位孩子已经递上陪跑申请了。现在先按原边界看，等后台手动开通后老师才会一起帮着盯。";
   }
   if (status === "paused") {
     return `${tierLabel(tier)}这档目前先暂停了。之前的记录都还在，但连续权益先不往下接。`;
@@ -206,12 +206,12 @@ function buildSummary(tier: MembershipTier, status: MembershipTierStatus) {
     return `${tierLabel(tier)}这档已经到期了。现在先回到试用边界，要继续接就得重新开通。`;
   }
   if (tier === "self_service") {
-    return "这位孩子现在已经在自助会员里了。系统会顺着这条线继续给周报、自动复检、素材推荐和时间轴。";
+    return "这位孩子现在已经在自助会员里了。系统会顺着这条线继续给每周小结、自动回看、配套练习和变化记录。";
   }
   if (tier === "coaching") {
-    return "这位孩子现在已经在陪跑会员里了。除了自动追踪，老师人工纠偏和更高优先级跟进也会一起接上。";
+    return "这位孩子现在已经在陪跑会员里了。除了系统自动跟，老师帮你盯和更高优先级跟进也会一起接上。";
   }
-  return "这位孩子现在还是试用。先把主问题看清楚，不直接承诺连续追踪和老师人工纠偏。";
+  return "这位孩子现在还是试用。先把主问题看清楚，不直接承诺连续跟和老师帮你盯。";
 }
 
 function serializeStateForLog(state: StudentMembershipState | null) {
@@ -577,7 +577,7 @@ export function validateMembershipUploadAllowance(input: { studentId: number; us
     return {
       ok: false,
       membership,
-      message: "试用这轮只先看 1 次体检。想继续上传、接周报和复检，就得开到自助会员以上。"
+      message: "试用这轮只先看 1 次体检。想继续上传、接每周小结和自动回看，就得开到自助会员以上。"
     };
   }
 

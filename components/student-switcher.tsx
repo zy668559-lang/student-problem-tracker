@@ -38,7 +38,7 @@ export function StudentSwitcher({ students, activeStudentId }: { students: Stude
           </option>
         ))}
       </select>
-      <p className="mt-3 text-sm leading-6 text-slate">切完孩子以后，上传、周报、记忆和复检都会按这个孩子单独看，不会串在一起。</p>
+      <p className="mt-3 text-sm leading-6 text-slate">切完孩子以后，上传、每周小结、变化记录和回看都会按这个孩子单独看，不会串在一起。</p>
     </label>
   );
 }

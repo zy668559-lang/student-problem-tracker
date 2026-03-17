@@ -1,4 +1,4 @@
-﻿import fs from "node:fs/promises";
+import fs from "node:fs/promises";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import { resetStudentMembership, resetStudentTrialAccess, setStudentMembership } from "./membership-test-helpers";
@@ -83,7 +83,7 @@ test("clicking continue tracking auto creates a followup lead", async ({ page },
   await expect(card).toContainText("parent@example.com", { timeout: 30_000 });
   await expect(card).toContainText("student_id 1", { timeout: 30_000 });
   await expect(card).toContainText(`source_ref_id ${created.diagnosisId}`, { timeout: 30_000 });
-  await page.screenshot({ path: testInfo.outputPath("01-followup-auto-pool.png"), fullPage: true });
+  await card.screenshot({ path: testInfo.outputPath("01-followup-auto-pool.png") });
 });
 
 test("followup lead status can flow from contacted to activated with action logs", async ({ page }, testInfo) => {
@@ -118,7 +118,7 @@ test("followup lead status can flow from contacted to activated with action logs
   await card.getByRole("button", { name: "保存这条跟进" }).click();
   await expect(card).toContainText("当前状态：已开通", { timeout: 30_000 });
   await expect(card).toContainText("activated-note", { timeout: 30_000 });
-  await page.screenshot({ path: testInfo.outputPath("02-followup-status-flow.png"), fullPage: true });
+  await card.screenshot({ path: testInfo.outputPath("02-followup-status-flow.png") });
 });
 
 test("followup leads stay isolated between two students", async ({ page }, testInfo) => {
@@ -146,6 +146,6 @@ test("followup leads stay isolated between two students", async ({ page }, testI
   await expect(cardA).not.toContainText("student_id 2");
   await expect(cardB).toContainText("student_id 2", { timeout: 30_000 });
   await expect(cardB).not.toContainText("student_id 1");
-  await page.screenshot({ path: testInfo.outputPath("03-followup-multi-student.png"), fullPage: true });
+  await cardB.screenshot({ path: testInfo.outputPath("03-followup-multi-student.png") });
 });
 

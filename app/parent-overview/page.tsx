@@ -79,7 +79,7 @@ export default async function ParentOverviewPage() {
       <section className="rounded-panel border border-white/70 bg-white/90 p-5 shadow-panel sm:p-8" data-testid="parent-overview-active">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-4xl">
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent/70">Parent Overview</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent/70">{"\u5bb6\u957f\u770b\u8fd9\u91cc"}</p>
             <h1 className="mt-2 text-2xl font-semibold text-ink sm:text-3xl">先盯这一条</h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate">{active.studentName} 这周先看“{active.unstableStep}”，先把这一步盯稳。</p>
           </div>
@@ -104,7 +104,7 @@ export default async function ParentOverviewPage() {
           <p className="text-lg font-semibold text-ink">{active.unstableStep}</p>
           <p className="mt-3 text-sm leading-6 text-slate">先看这一处稳没稳，不急着往后赶。</p>
         </SectionCard>
-        <SectionCard title="继续追踪理由" subtitle="先结论，再决定要不要继续。">
+        <SectionCard title="为什么还要继续跟" subtitle="先看值不值得，再决定接不接。">
           <p className="text-lg font-semibold text-ink">{active.continueTrackingReason}</p>
           <p className="mt-3 text-sm leading-6 text-slate">不是没变化，是还没稳到能放手。</p>
         </SectionCard>
@@ -113,7 +113,7 @@ export default async function ParentOverviewPage() {
       <section className="rounded-panel border border-white/70 bg-white/90 p-5 shadow-panel sm:p-8">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent/70">Main Chart</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent/70">{"\u8fd9\u5468\u53d8\u5316"}</p>
             <h2 className="mt-2 text-2xl font-semibold text-ink">这条主线现在看到哪</h2>
             <p className="mt-2 text-sm leading-6 text-slate">只用 4 档状态横条，不假装精确打分。</p>
           </div>
@@ -153,7 +153,7 @@ export default async function ParentOverviewPage() {
         </SectionCard>
 
         <section className="rounded-panel border border-accent/20 bg-accent/10 p-5 shadow-panel sm:p-8">
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent/70">Next Step</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent/70">{"\u63a5\u4e0b\u6765\u600e\u4e48\u505a"}</p>
           <h2 className="mt-2 text-2xl font-semibold text-ink">这周先这样安排</h2>
           <div className="mt-4 space-y-3">
             <div className="rounded-3xl border border-white/70 bg-white/90 px-5 py-4">
@@ -161,7 +161,7 @@ export default async function ParentOverviewPage() {
               <p className="mt-2 text-sm leading-6 text-slate">{active.weeklyOneLiner}</p>
             </div>
             <div className="rounded-3xl border border-white/70 bg-white/90 px-5 py-4">
-              <p className="text-sm font-semibold text-ink">当前会员边界</p>
+              <p className="text-sm font-semibold text-ink">{"\u73b0\u5728\u8fd9\u6863\u80fd\u5e2e\u5230\u54ea"}</p>
               <p className="mt-2 text-sm leading-6 text-slate">{active.membership.label}</p>
             </div>
           </div>
@@ -180,7 +180,7 @@ export default async function ParentOverviewPage() {
               testId="parent-overview-active-timeline"
               className="rounded-2xl border border-line bg-white px-5 py-3 text-sm font-semibold text-ink"
             >
-              看证据时间轴
+              {"\u770b\u53d8\u5316\u8bb0\u5f55"}
             </StudentScopedLink>
             <StudentScopedLink
               studentId={active.studentId}
@@ -188,7 +188,7 @@ export default async function ParentOverviewPage() {
               testId="parent-overview-active-membership"
               className="inline-flex items-center px-2 py-3 text-sm font-medium text-slate underline-offset-4 transition hover:text-ink hover:underline"
             >
-              看会员差异
+              {"\u770b\u770b\u4e09\u79cd\u65b9\u5f0f\u5dee\u5728\u54ea"}
             </StudentScopedLink>
           </div>
         </section>
@@ -266,7 +266,7 @@ export default async function ParentOverviewPage() {
                     testId={`parent-overview-timeline-${student.studentId}`}
                     className="rounded-2xl border border-line bg-white px-4 py-3 text-sm font-semibold text-ink"
                   >
-                    看时间轴
+                    {"\u770b\u53d8\u5316\u8bb0\u5f55"}
                   </StudentScopedLink>
                   <StudentScopedLink
                     studentId={student.studentId}
@@ -282,7 +282,7 @@ export default async function ParentOverviewPage() {
                     testId={`parent-overview-membership-${student.studentId}`}
                     className="inline-flex items-center px-1 py-3 text-sm font-medium text-slate underline-offset-4 transition hover:text-ink hover:underline"
                   >
-                    看会员差异
+                    {"\u770b\u770b\u4e09\u79cd\u65b9\u5f0f\u5dee\u5728\u54ea"}
                   </StudentScopedLink>
                 </div>
               </article>
