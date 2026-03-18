@@ -1,4 +1,4 @@
-﻿export const dynamic = "force-dynamic";
+export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { OperationsGrowthPanel } from "@/components/admin/operations-growth-panel";
@@ -8,7 +8,7 @@ import { getAdminOperationsSnapshot } from "@/lib/db/admin";
 import { getWeeklyBatchSchedulerSnapshot } from "@/lib/db/a4";
 import { getFollowupSummary } from "@/lib/db/followups";
 import { listTrackingSnapshotAdmin } from "@/lib/db/p25";
-import { getReviewQueue } from "@/lib/db";
+import { getReviewQueue } from "@/lib/db/d1";
 import { formatDate, reviewStatusLabel, subjectLabel } from "@/lib/utils";
 
 export default function AdminOperationsPage() {
@@ -34,7 +34,7 @@ export default function AdminOperationsPage() {
           <p className="text-4xl font-semibold text-ink">{operations.failedCalls}</p>
         </SectionCard>
         <SectionCard title="估算成本" subtitle="累计估算">
-          <p className="text-4xl font-semibold text-ink">¥ {operations.estimatedCost.toFixed(2)}</p>
+          <p className="text-4xl font-semibold text-ink">￥ {operations.estimatedCost.toFixed(2)}</p>
         </SectionCard>
         <SectionCard title="新意向" subtitle="lead followups">
           <p className="text-4xl font-semibold text-ink">{followups.newIntent}</p>
@@ -60,13 +60,16 @@ export default function AdminOperationsPage() {
         </SectionCard>
       </div>
 
-      <SectionCard title="审核队列" subtitle="review queue">
+      <SectionCard title="审核队列" subtitle="staging draft queue">
         <div className="space-y-4">
           {reviewQueue.map((item) => (
             <div key={item.id} className="rounded-2xl border border-line px-4 py-4 text-sm leading-6 text-slate">
               <p className="font-semibold text-ink">{item.studentName} · {subjectLabel(item.subject)} / {item.module}</p>
               <p className="mt-1">状态：{reviewStatusLabel(item.reviewStatus)} · 置信度 {(item.confidence * 100).toFixed(0)}% · {formatDate(item.createdAt)}</p>
-              <Link href={`/diagnosis/${item.id}`} className="mt-2 inline-block text-sm font-semibold text-accent">去看这条诊断</Link>
+              <div className="mt-2 flex flex-wrap gap-3">
+                <Link href={`/review-draft/${item.id}`} className="text-sm font-semibold text-accent">去看这条草稿</Link>
+                {item.officialDiagnosisId ? <Link href={`/diagnosis/${item.officialDiagnosisId}`} className="text-sm font-semibold text-ink">看正式诊断</Link> : null}
+              </div>
             </div>
           ))}
         </div>
@@ -79,7 +82,7 @@ export default function AdminOperationsPage() {
               <div key={item.id} className="rounded-2xl border border-line px-4 py-4">
                 <p className="font-semibold text-ink">{item.provider} / {item.modelName}</p>
                 <p>模式：{item.diagnosisMode} · Prompt：{item.promptVersion}</p>
-                <p>耗时：{item.latencyMs} ms · 估算成本：¥ {item.estimatedCost.toFixed(4)}</p>
+                <p>耗时：{item.latencyMs} ms · 估算成本：￥ {item.estimatedCost.toFixed(4)}</p>
                 <p>时间：{formatDate(item.createdAt)}</p>
               </div>
             ))}

@@ -1,7 +1,8 @@
-﻿import fs from "node:fs/promises";
+import fs from "node:fs/promises";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import { resetStudentTrialAccess, setStudentMembership } from "./membership-test-helpers";
+import { finalizeDraftByAdmin, restoreParentContext } from "./d1-review-helpers";
 
 const fixturePath = path.join(process.cwd(), "tests", "fixtures", "sample-upload.png");
 const logStore = new Map<string, string[]>();
@@ -44,7 +45,7 @@ async function resetTrialQuota(page: Page) {
   await setStudentMembership(page, 1, "self_service", { reason: "e2e recheck self service" });
 }
 
-async function uploadDiagnosis(page: Page, input: { tag: string; scoreNote: string; note: string }) {
+async function uploadDiagnosis(page: Page, studentId: number, input: { tag: string; scoreNote: string; note: string }) {
   await page.goto("/upload");
   await page.locator('input[type="file"]').setInputFiles(fixturePath);
   await page.locator('select[name="subject"]').selectOption("math");
@@ -52,24 +53,22 @@ async function uploadDiagnosis(page: Page, input: { tag: string; scoreNote: stri
   await page.locator('input[name="scoreNote"]').fill(input.scoreNote);
   await page.locator('input[name="note"]').fill(input.note);
   await page.locator('textarea[name="studentSelfReport"]').fill(input.tag);
-
   const uploadResponse = page.waitForResponse((response) => response.url().includes("/api/uploads") && response.request().method() === "POST");
   await page.locator('button[type="submit"]').click();
   const response = await uploadResponse;
-  const payload = await response.json() as { ok: boolean; diagnosisId: number; weeklyReportId: number; recheckTaskId: number | null };
+  const payload = await response.json() as { ok: boolean; draftId: number };
   expect(payload.ok).toBeTruthy();
-
-  await expect(page).toHaveURL(/\/diagnosis\/\d+$/, { timeout: 180_000 });
+  await expect(page).toHaveURL(/\/review-draft\/\d+$/, { timeout: 180_000 });
+  const draftId = Number(page.url().match(/\/review-draft\/(\d+)$/)?.[1] ?? payload.draftId);
+  const finalized = await finalizeDraftByAdmin(page, draftId);
+  await restoreParentContext(page, studentId);
+  await page.goto(`/diagnosis/${finalized.officialDiagnosisId}`);
   await expect(page.locator("main")).toContainText("复检状态", { timeout: 30_000 });
   await expect(page.locator("main")).toContainText("下轮优先级", { timeout: 30_000 });
-  const diagnosisId = Number(page.url().match(/\/diagnosis\/(\d+)$/)?.[1]);
+  const diagnosisId = Number(page.url().match(/\/diagnosis\/(\d+)$/)?.[1] ?? finalized.officialDiagnosisId ?? 0);
   const weeklyHref = await page.locator('a[href^="/weekly-report/"]').first().getAttribute("href");
-  const weeklyReportId = Number(weeklyHref?.match(/\/weekly-report\/(\d+)$/)?.[1]);
-  return {
-    diagnosisId: diagnosisId || payload.diagnosisId,
-    weeklyReportId: weeklyReportId || payload.weeklyReportId,
-    recheckTaskId: payload.recheckTaskId
-  };
+  const weeklyReportId = Number(weeklyHref?.match(/\/weekly-report\/(\d+)$/)?.[1] ?? finalized.officialWeeklyReportId ?? 0);
+  return { diagnosisId, weeklyReportId, recheckTaskId: finalized.recheckTaskId ?? null };
 }
 
 test("recheck task is created automatically and repeat counters accumulate correctly", async ({ page }, testInfo) => {
@@ -78,7 +77,7 @@ test("recheck task is created automatically and repeat counters accumulate corre
 
   await resetTrialQuota(page);
   await loginParent(page);
-  const first = await uploadDiagnosis(page, { tag, scoreNote: "68 / 100", note: "第一次诊断" });
+  const first = await uploadDiagnosis(page, 1, { tag, scoreNote: "68 / 100", note: "第一次诊断" });
   await expect(page.locator("main")).toContainText("继续追踪理由");
   expect(first.recheckTaskId).toBeTruthy();
 
@@ -90,7 +89,7 @@ test("recheck task is created automatically and repeat counters accumulate corre
   expect(beforeTask).toBeTruthy();
 
   await loginParent(page);
-  const second = await uploadDiagnosis(page, { tag, scoreNote: "72 / 100", note: "第二次还是同类题" });
+  const second = await uploadDiagnosis(page, 1, { tag, scoreNote: "72 / 100", note: "第二次还是同类题" });
   expect(second.recheckTaskId).toBe(first.recheckTaskId);
 
   await loginAdmin(page);
@@ -113,8 +112,8 @@ test("recheck completion writes back memory, weekly report and change logs", asy
 
   await resetTrialQuota(page);
   await loginParent(page);
-  const first = await uploadDiagnosis(page, { tag, scoreNote: "64 / 100", note: "先挂复检" });
-  await uploadDiagnosis(page, { tag, scoreNote: "95 / 100", note: "复检通过，今天这一类题基本过了" });
+  const first = await uploadDiagnosis(page, 1, { tag, scoreNote: "64 / 100", note: "先挂复检" });
+  await uploadDiagnosis(page, 1, { tag, scoreNote: "95 / 100", note: "复检通过，今天这一类题基本过了" });
 
   await expect(page.locator("main")).toContainText(/有进步.*还没稳/, { timeout: 30_000 });
   await page.goto(`/weekly-report/${first.weeklyReportId}`);
@@ -134,9 +133,9 @@ test("recheck stabilization requires two passed attempts and shows 已稳住", a
 
   await resetTrialQuota(page);
   await loginParent(page);
-  await uploadDiagnosis(page, { tag, scoreNote: "61 / 100", note: "先建立复检任务" });
-  await uploadDiagnosis(page, { tag, scoreNote: "94 / 100", note: "复检通过一次" });
-  const last = await uploadDiagnosis(page, { tag, scoreNote: "96 / 100", note: "复检通过第二次，已经稳住" });
+  await uploadDiagnosis(page, 1, { tag, scoreNote: "61 / 100", note: "先建立复检任务" });
+  await uploadDiagnosis(page, 1, { tag, scoreNote: "94 / 100", note: "复检通过一次" });
+  const last = await uploadDiagnosis(page, 1, { tag, scoreNote: "96 / 100", note: "复检通过第二次，已经稳住" });
 
   await expect(page.locator("main")).toContainText("已稳住", { timeout: 30_000 });
   await page.goto(`/weekly-report/${last.weeklyReportId}`);

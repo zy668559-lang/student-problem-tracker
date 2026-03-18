@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -96,21 +96,17 @@ export function UploadForm({
 
     const result = (await response.json()) as {
       ok: boolean;
-      diagnosisId?: number;
+      draftId?: number;
       message?: string;
     };
 
-    if (!response.ok || !result.ok || !result.diagnosisId) {
+    if (!response.ok || !result.ok || !result.draftId) {
       setError(softenUploadError(result.message));
       setLoading(false);
       return;
     }
 
-    if (completeEventName) {
-      await postResultEvent({ diagnosisId: result.diagnosisId, eventName: completeEventName, eventValue: submissionType });
-    }
-
-    router.push(`/diagnosis/${result.diagnosisId}`);
+    router.push(`/review-draft/${result.draftId}`);
     router.refresh();
   }
 

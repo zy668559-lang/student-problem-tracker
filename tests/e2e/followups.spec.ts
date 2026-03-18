@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import { resetStudentMembership, resetStudentTrialAccess, setStudentMembership } from "./membership-test-helpers";
+import { finalizeDraftByAdmin, restoreParentContext } from "./d1-review-helpers";
 
 const fixturePath = path.join(process.cwd(), "tests", "fixtures", "sample-upload.png");
 const logStore = new Map<string, string[]>();
@@ -49,7 +50,7 @@ async function switchStudent(page: Page, studentId: string) {
   await expect(page.locator("select").first()).toHaveValue(studentId, { timeout: 30_000 });
 }
 
-async function createDiagnosis(page: Page, studentLabel: string, subject: "math" | "english", moduleIndex: number) {
+async function createDiagnosis(page: Page, studentId: number, studentLabel: string, subject: "math" | "english", moduleIndex: number) {
   await page.goto("/upload");
   await page.locator('input[type="file"]').setInputFiles(fixturePath);
   await page.locator('select[name="subject"]').selectOption(subject);
@@ -60,10 +61,14 @@ async function createDiagnosis(page: Page, studentLabel: string, subject: "math"
   const uploadResponse = page.waitForResponse((response) => response.url().includes("/api/uploads") && response.request().method() === "POST");
   await page.locator('button[type="submit"]').click();
   const response = await uploadResponse;
-  const payload = await response.json() as { ok: boolean; diagnosisId: number; recheckTaskId: number | null };
+  const payload = await response.json() as { ok: boolean; draftId: number };
   expect(payload.ok).toBeTruthy();
-  await expect(page).toHaveURL(/\/diagnosis\/\d+$/, { timeout: 180_000 });
-  return payload;
+  await expect(page).toHaveURL(/\/review-draft\/\d+$/, { timeout: 180_000 });
+  const draftId = Number(page.url().match(/\/review-draft\/(\d+)$/)?.[1] ?? payload.draftId);
+  const finalized = await finalizeDraftByAdmin(page, draftId);
+  await restoreParentContext(page, studentId);
+  await page.goto(`/diagnosis/${finalized.officialDiagnosisId}`);
+  return { ok: true, diagnosisId: Number(finalized.officialDiagnosisId ?? 0), recheckTaskId: finalized.recheckTaskId ?? null };
 }
 
 test("clicking continue tracking auto creates a followup lead", async ({ page }, testInfo) => {
@@ -72,7 +77,7 @@ test("clicking continue tracking auto creates a followup lead", async ({ page },
   await setStudentMembership(page, 1, "self_service", { reason: "e2e followup continue" });
   await login(page, "parent@example.com");
   await switchStudent(page, "1");
-  const created = await createDiagnosis(page, `lead-a-${Date.now()}`, "math", 0);
+  const created = await createDiagnosis(page, 1, `lead-a-${Date.now()}`, "math", 0);
 
   await page.getByRole("button", { name: "继续追踪", exact: true }).click();
   await expect(page).toHaveURL(/\/recheck\/\d+$/, { timeout: 30_000 });
@@ -91,7 +96,7 @@ test("followup lead status can flow from contacted to activated with action logs
   await resetStudentAccess(page);
   await login(page, "parent@example.com");
   await switchStudent(page, "1");
-  await createDiagnosis(page, `intent-a-${Date.now()}`, "math", 0);
+  await createDiagnosis(page, 1, `intent-a-${Date.now()}`, "math", 0);
 
   const intentResponse = page.waitForResponse((response) => response.url().includes("/api/tracking-intents") && response.request().method() === "POST");
   await page.locator('textarea').last().fill(`intent-note-${Date.now()}`);
@@ -129,12 +134,12 @@ test("followup leads stay isolated between two students", async ({ page }, testI
   await login(page, "parent@example.com");
 
   await switchStudent(page, "1");
-  const a = await createDiagnosis(page, `student-a-${Date.now()}`, "math", 0);
+  const a = await createDiagnosis(page, 1, `student-a-${Date.now()}`, "math", 0);
   await page.getByRole("button", { name: "继续追踪", exact: true }).click();
   await expect(page).toHaveURL(/\/recheck\/\d+$/, { timeout: 30_000 });
 
   await switchStudent(page, "2");
-  const b = await createDiagnosis(page, `student-b-${Date.now()}`, "english", 0);
+  const b = await createDiagnosis(page, 2, `student-b-${Date.now()}`, "english", 0);
   await page.getByRole("button", { name: "继续追踪", exact: true }).click();
   await expect(page).toHaveURL(/\/recheck\/\d+$/, { timeout: 30_000 });
 

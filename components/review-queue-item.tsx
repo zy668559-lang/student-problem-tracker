@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -47,9 +47,12 @@ export function ReviewQueueItemCard({ item }: { item: ReviewQueueItem }) {
             <span className="text-sm text-slate">{subjectLabel(item.subject)} / {item.module}</span>
           </div>
           <h3 className="mt-3 text-xl font-semibold text-ink">{item.studentName}</h3>
-          <p className="mt-2 text-sm text-slate">生成时间：{formatDate(item.createdAt)} · 置信度 {(item.confidence * 100).toFixed(0)}%</p>
+          <p className="mt-2 text-sm text-slate">家长：{item.parentName} · 生成时间：{formatDate(item.createdAt)} · 置信度 {(item.confidence * 100).toFixed(0)}%</p>
         </div>
-        <a href={`/diagnosis/${item.id}`} className="text-sm font-semibold text-accent">查看诊断页</a>
+        <div className="flex flex-wrap gap-3 text-sm font-semibold">
+          <a href={`/review-draft/${item.id}`} className="text-accent">查看草稿页</a>
+          {item.officialDiagnosisId ? <a href={`/diagnosis/${item.officialDiagnosisId}`} className="text-ink">查看正式诊断</a> : null}
+        </div>
       </div>
 
       <textarea
@@ -73,8 +76,8 @@ export function ReviewQueueItemCard({ item }: { item: ReviewQueueItem }) {
       {error ? <p className="mt-4 text-sm text-rose">{error}</p> : null}
 
       <div className="mt-5 flex flex-wrap gap-3">
-        <button type="button" onClick={() => updateReview("approve")} disabled={loading} className="rounded-2xl bg-accent px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">通过</button>
-        <button type="button" onClick={() => updateReview("edit")} disabled={loading} className="rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">修改并保存</button>
+        <button type="button" onClick={() => updateReview("approve")} disabled={loading} className="rounded-2xl bg-accent px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">通过并正式入库</button>
+        <button type="button" onClick={() => updateReview("edit")} disabled={loading} className="rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">修改草稿</button>
         <button type="button" onClick={() => updateReview("reject")} disabled={loading} className="rounded-2xl border border-rose/30 bg-rose/10 px-4 py-3 text-sm font-semibold text-rose disabled:cursor-not-allowed disabled:opacity-60">驳回</button>
       </div>
     </article>

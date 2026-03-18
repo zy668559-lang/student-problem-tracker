@@ -2,7 +2,7 @@
 
 import { ReviewQueueItemCard } from "@/components/review-queue-item";
 import { SectionCard } from "@/components/section-card";
-import { getReviewQueue } from "@/lib/db";
+import { getReviewQueue } from "@/lib/db/d1";
 
 export default function ReviewQueuePage() {
   const queue = getReviewQueue();
@@ -13,7 +13,7 @@ export default function ReviewQueuePage() {
         <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent/70">Review Queue</p>
         <h1 className="mt-3 text-3xl font-semibold text-ink">审核台</h1>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-slate">
-          这里展示 AI 自动生成的诊断 JSON。支持通过、修改、驳回；通过后自动写入正式档案状态并刷新周总结。
+          这里展示自动抓取后的草稿诊断。支持通过、修改、驳回；只有通过后才会正式写入学生档案并刷新周总结。
         </p>
       </section>
 

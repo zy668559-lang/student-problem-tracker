@@ -1,4 +1,5 @@
-﻿import { getDb, getReviewQueue } from "@/lib/db";
+import { getDb } from "@/lib/db";
+import { getReviewQueue } from "@/lib/db/d1";
 import { getEvidenceTimelineDetail, getWeeklyBatchSchedulerSnapshot } from "@/lib/db/a4";
 import {
   getHeartbeatOpenCount,
@@ -136,29 +137,17 @@ function buildQueueItem(input: {
 }
 
 function getTodayReviewItems() {
-  const db = getDb();
   const queue = getReviewQueue().filter((item) => item.reviewStatus === "pending" || item.reviewStatus === "edited").slice(0, 6);
-  return queue.map((item) => {
-    const parent = db.prepare(`
-      SELECT s.id AS student_id, u.name AS parent_name, u.email AS parent_email
-      FROM students s
-      INNER JOIN uploads up ON up.student_id = s.id
-      INNER JOIN diagnoses d ON d.upload_id = up.id
-      INNER JOIN users u ON u.id = s.user_id
-      WHERE d.id = ?
-      LIMIT 1
-    `).get(item.id) as { student_id: number; parent_name: string; parent_email: string } | undefined;
-    return buildQueueItem({
-      studentId: parent?.student_id ?? 0,
-      studentName: item.studentName,
-      parentName: parent?.parent_name ?? "家长账号",
-      parentEmail: parent?.parent_email ?? "-",
-      summary: `${item.subject} / ${item.module} / 置信度 ${(item.confidence * 100).toFixed(0)}%`,
-      href: `/diagnosis/${item.id}`,
-      badge: "待审核",
-      createdAt: item.createdAt
-    });
-  });
+  return queue.map((item) => buildQueueItem({
+    studentId: item.studentId,
+    studentName: item.studentName,
+    parentName: item.parentName,
+    parentEmail: item.parentEmail,
+    summary: `${item.subject} / ${item.module} / 置信度 ${(item.confidence * 100).toFixed(0)}%`,
+    href: `/review-draft/${item.id}`,
+    badge: "待审核",
+    createdAt: item.createdAt
+  }));
 }
 
 function getWeeklyHighIntentItems() {
@@ -346,4 +335,3 @@ export function getAdminControlCenterSnapshot(selectedStudentId?: number | null)
     selectedStudentId: selectedId
   };
 }
-

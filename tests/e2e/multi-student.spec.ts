@@ -1,7 +1,8 @@
-﻿import fs from "node:fs/promises";
+import fs from "node:fs/promises";
 import path from "node:path";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
 import { resetStudentMembership, resetStudentTrialAccess, setStudentMembership } from "./membership-test-helpers";
+import { finalizeDraftByAdmin, restoreParentContext } from "./d1-review-helpers";
 
 const fixturePath = path.join(process.cwd(), "tests", "fixtures", "sample-upload.png");
 const logStore = new Map<string, string[]>();
@@ -48,7 +49,7 @@ async function switchStudent(page: Page, studentId: string, expectedName: string
   await expect(page.locator("main")).toContainText(`${expectedName} 的本周问题看板`, { timeout: 30_000 });
 }
 
-async function uploadForCurrentStudent(page: Page, module: string, reportLabel: string, expectedName: string) {
+async function uploadForCurrentStudent(page: Page, studentId: number, module: string, reportLabel: string, expectedName: string) {
   await page.goto("/upload");
   await expect(page.locator("main")).toContainText(`当前孩子：${expectedName}`);
   await page.locator('input[type="file"]').setInputFiles(fixturePath);
@@ -58,13 +59,20 @@ async function uploadForCurrentStudent(page: Page, module: string, reportLabel: 
   await page.locator('select[name="uploadType"]').selectOption("题图");
   await page.locator('input[name="note"]').fill(`multi-student ${reportLabel}`);
   await page.locator('textarea[name="studentSelfReport"]').fill(`student isolation ${reportLabel}`);
+  const uploadResponse = page.waitForResponse((response) => response.url().includes("/api/uploads") && response.request().method() === "POST");
   await page.locator('button[type="submit"]').click();
-
-  await expect(page).toHaveURL(/\/diagnosis\/\d+$/, { timeout: 180_000 });
+  const response = await uploadResponse;
+  const payload = await response.json() as { ok: boolean; draftId: number };
+  expect(payload.ok).toBeTruthy();
+  await expect(page).toHaveURL(/\/review-draft\/\d+$/, { timeout: 180_000 });
+  const draftId = Number(page.url().match(/\/review-draft\/(\d+)$/)?.[1] ?? payload.draftId);
+  const finalized = await finalizeDraftByAdmin(page, draftId);
+  await restoreParentContext(page, studentId);
+  await page.goto(`/diagnosis/${finalized.officialDiagnosisId}`);
   await expect(page.locator("main")).toContainText(`${expectedName} 的诊断结果`);
-  const diagnosisId = Number(page.url().match(/\/diagnosis\/(\d+)$/)?.[1]);
+  const diagnosisId = Number(page.url().match(/\/diagnosis\/(\d+)$/)?.[1] ?? finalized.officialDiagnosisId ?? 0);
   const weeklyHref = await page.locator('a[href^="/weekly-report/"]').first().getAttribute("href");
-  const weeklyReportId = Number(weeklyHref?.match(/\/weekly-report\/(\d+)$/)?.[1]);
+  const weeklyReportId = Number(weeklyHref?.match(/\/weekly-report\/(\d+)$/)?.[1] ?? finalized.officialWeeklyReportId ?? 0);
   expect(diagnosisId).toBeGreaterThan(0);
   expect(weeklyReportId).toBeGreaterThan(0);
   return { diagnosisId, weeklyReportId };
@@ -88,11 +96,11 @@ test("multi-student switch keeps uploads, diagnosis and weekly reports isolated 
   await page.screenshot({ path: testInfo.outputPath("01-parent-dashboard.png"), fullPage: true });
 
   await switchStudent(page, "1", "林同学");
-  const a = await uploadForCurrentStudent(page, "函数", "A-flow", "林同学");
+  const a = await uploadForCurrentStudent(page, 1, "函数", "A-flow", "林同学");
   await page.screenshot({ path: testInfo.outputPath("02-student-a-diagnosis.png"), fullPage: true });
 
   await switchStudent(page, "2", "林可可");
-  const b = await uploadForCurrentStudent(page, "阅读定位", "B-flow", "林可可");
+  const b = await uploadForCurrentStudent(page, 2, "阅读定位", "B-flow", "林可可");
   await page.screenshot({ path: testInfo.outputPath("03-student-b-diagnosis.png"), fullPage: true });
 
   await switchStudent(page, "1", "林同学");

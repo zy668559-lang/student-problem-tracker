@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import { resetStudentMembership, resetStudentTrialAccess, setStudentMembership } from "./membership-test-helpers";
+import { finalizeDraftByAdmin, restoreParentContext } from "./d1-review-helpers";
 
 const fixturePath = path.join(process.cwd(), "tests", "fixtures", "sample-upload.png");
 const logStore = new Map<string, string[]>();
@@ -41,7 +42,7 @@ async function resetStudentQuota(page: Page) {
   await resetStudentMembership(page, [1]);
 }
 
-async function createDiagnosis(page: Page, tag: string) {
+async function createDiagnosis(page: Page, studentId: number, tag: string) {
   await login(page, "parent@example.com");
   await page.goto("/upload");
   await page.locator('input[type="file"]').setInputFiles(fixturePath);
@@ -53,10 +54,15 @@ async function createDiagnosis(page: Page, tag: string) {
   const uploadResponse = page.waitForResponse((response) => response.url().includes("/api/uploads") && response.request().method() === "POST");
   await page.locator('button[type="submit"]').click();
   const response = await uploadResponse;
-  const payload = await response.json() as { ok: boolean; diagnosisId: number; recheckTaskId: number | null };
+  const payload = await response.json() as { ok: boolean; draftId: number };
   expect(payload.ok).toBeTruthy();
-  await expect(page).toHaveURL(/\/diagnosis\/\d+$/, { timeout: 180_000 });
-  return payload;
+  await expect(page).toHaveURL(/\/review-draft\/\d+$/, { timeout: 180_000 });
+  const draftId = Number(page.url().match(/\/review-draft\/(\d+)$/)?.[1] ?? payload.draftId);
+  const finalized = await finalizeDraftByAdmin(page, draftId);
+  await restoreParentContext(page, 1);
+  await page.goto(`/diagnosis/${finalized.officialDiagnosisId}`);
+  await expect(page).toHaveURL(/\/diagnosis\/\d+$/, { timeout: 30_000 });
+  return { ok: true, diagnosisId: finalized.officialDiagnosisId ?? 0, recheckTaskId: finalized.recheckTaskId ?? null };
 }
 
 test("recheck upload lands on dedicated compare page with parent-friendly summary", async ({ page }, testInfo) => {
@@ -65,7 +71,7 @@ test("recheck upload lands on dedicated compare page with parent-friendly summar
 
   await resetStudentQuota(page);
   await setStudentMembership(page, 1, "self_service", { reason: "e2e compare self service" });
-  const first = await createDiagnosis(page, tag);
+  const first = await createDiagnosis(page, 1, tag);
   expect(first.recheckTaskId).toBeTruthy();
 
   await page.getByRole("link", { name: "进入复检任务页" }).click();
@@ -75,8 +81,17 @@ test("recheck upload lands on dedicated compare page with parent-friendly summar
   await page.locator('input[type="file"]').setInputFiles(fixturePath);
   await page.locator('input[name="scoreNote"]').fill("95 / 100");
   await page.locator('textarea[name="studentSelfReport"]').fill(`${tag} 这轮我按老师说的再做一遍`);
+  const uploadResponse = page.waitForResponse((response) => response.url().includes("/api/uploads") && response.request().method() === "POST");
   await page.locator('button[type="submit"]').click();
-  await expect(page).toHaveURL(/\/diagnosis\/\d+$/, { timeout: 180_000 });
+  const response = await uploadResponse;
+  const payload = await response.json() as { ok: boolean; draftId: number };
+  expect(payload.ok).toBeTruthy();
+  await expect(page).toHaveURL(/\/review-draft\/\d+$/, { timeout: 180_000 });
+  const draftId = Number(page.url().match(/\/review-draft\/(\d+)$/)?.[1] ?? payload.draftId);
+  const finalized = await finalizeDraftByAdmin(page, draftId);
+  await restoreParentContext(page, 1);
+  await page.goto(`/diagnosis/${finalized.officialDiagnosisId}`);
+  await expect(page).toHaveURL(/\/diagnosis\/\d+$/, { timeout: 30_000 });
   await page.getByRole("link", { name: "看结果对比页" }).click();
   await expect(page).toHaveURL(new RegExp(`/compare/${first.recheckTaskId}$`), { timeout: 30_000 });
   await expect(page.locator("main")).toContainText("上次主要问题");
@@ -93,7 +108,7 @@ test("manual recheck correction writes back priority and weekly report", async (
 
   await resetStudentQuota(page);
   await setStudentMembership(page, 1, "coaching", { reason: "e2e manual correction coaching" });
-  const first = await createDiagnosis(page, tag);
+  const first = await createDiagnosis(page, 1, tag);
   expect(first.recheckTaskId).toBeTruthy();
 
   await login(page, "admin@example.com");
@@ -126,7 +141,7 @@ test("weekly scheduler and follow-up funnel are visible and editable in admin", 
 
   await resetStudentQuota(page);
   await setStudentMembership(page, 1, "self_service", { reason: "e2e operations self service" });
-  const first = await createDiagnosis(page, tag);
+  const first = await createDiagnosis(page, 1, tag);
   expect(first.recheckTaskId).toBeTruthy();
 
   const intentResponse = page.waitForResponse((response) => response.url().includes("/api/tracking-intents") && response.request().method() === "POST");

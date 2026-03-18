@@ -1,4 +1,4 @@
-﻿export type Subject = "math" | "english";
+export type Subject = "math" | "english";
 
 export type ReviewStatus = "pending" | "approved" | "rejected" | "edited";
 export type DiagnosisMode = "quick" | "standard" | "deep";
@@ -257,14 +257,58 @@ export interface WeeklyReportDetail {
 
 export interface ReviewQueueItem {
   id: number;
+  studentId: number;
+  parentAccountId: number;
   studentName: string;
+  parentName: string;
+  parentEmail: string;
   subject: Subject;
   module: string;
   reviewStatus: ReviewStatus;
   confidence: number;
   createdAt: string;
+  updatedAt: string;
   payload: DiagnosisPayload;
   reviewNotes?: string | null;
+  officialDiagnosisId?: number | null;
+  officialWeeklyReportId?: number | null;
+}
+
+export interface ReviewDraftDetail {
+  id: number;
+  studentId: number;
+  parentAccountId: number;
+  studentName: string;
+  parentName: string;
+  parentEmail: string;
+  subject: Subject;
+  module: string;
+  reviewStatus: ReviewStatus;
+  confidence: number;
+  createdAt: string;
+  updatedAt: string;
+  uploadType: string;
+  fileName: string;
+  filePath: string;
+  scoreNote: string | null;
+  note: string | null;
+  studentSelfReport: string | null;
+  stuckPointChoice: string | null;
+  stuckPointSource: StuckPointSource;
+  stepsText: string | null;
+  hasSteps: boolean;
+  stepQuality: StepQuality;
+  imageCount: number;
+  diagnosisMode: DiagnosisMode;
+  submissionType: SubmissionType;
+  sourceRecheckTaskId: number | null;
+  payload: DiagnosisPayload;
+  reviewNotes: string | null;
+  reviewDiff: Record<string, unknown> | null;
+  officialUploadId: number | null;
+  officialDiagnosisId: number | null;
+  officialWeeklyReportId: number | null;
+  materializedAt: string | null;
 }
 
 export interface ModelCallLogDetail {
@@ -746,6 +790,3 @@ export interface EvidenceTimelineDetail {
   recentEventSummary: string[];
   nodes: EvidenceTimelineNode[];
 }
-
-
-

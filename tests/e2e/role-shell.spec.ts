@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import { resetStudentMembership, resetStudentTrialAccess } from "./membership-test-helpers";
+import { finalizeDraftByAdmin, restoreParentContext } from "./d1-review-helpers";
 
 const fixturePath = path.join(process.cwd(), "tests", "fixtures", "sample-upload.png");
 const logStore = new Map<string, string[]>();
@@ -43,7 +44,7 @@ async function switchStudent(page: Page, studentId: string, expectedName: string
   await expect(page.locator("main")).toContainText(expectedName, { timeout: 30_000 });
 }
 
-async function createDiagnosis(page: Page, studentLabel: string, subject: "math" | "english", module: string) {
+async function createDiagnosis(page: Page, studentId: number, studentLabel: string, subject: "math" | "english", module: string) {
   await page.goto("/upload");
   await page.locator('input[type="file"]').setInputFiles(fixturePath);
   await page.locator('select[name="subject"]').selectOption(subject);
@@ -54,10 +55,19 @@ async function createDiagnosis(page: Page, studentLabel: string, subject: "math"
   const uploadResponse = page.waitForResponse((response) => response.url().includes("/api/uploads") && response.request().method() === "POST");
   await page.locator('button[type="submit"]').click();
   const response = await uploadResponse;
-  const payload = await response.json() as { ok: boolean; diagnosisId: number; recheckTaskId: number | null };
+  const payload = await response.json() as { ok: boolean; draftId: number };
   expect(payload.ok).toBeTruthy();
-  await expect(page).toHaveURL(/\/diagnosis\/\d+$/, { timeout: 180_000 });
-  return payload;
+  await expect(page).toHaveURL(/\/review-draft\/\d+$/, { timeout: 180_000 });
+  const draftId = Number(page.url().match(/\/review-draft\/(\d+)$/)?.[1] ?? payload.draftId);
+  const finalized = await finalizeDraftByAdmin(page, draftId);
+  await restoreParentContext(page, studentId);
+  await page.goto(`/diagnosis/${finalized.officialDiagnosisId}`);
+  await expect(page).toHaveURL(/\/diagnosis\/\d+$/, { timeout: 30_000 });
+  return {
+    ok: true,
+    diagnosisId: finalized.officialDiagnosisId ?? 0,
+    recheckTaskId: finalized.recheckTaskId ?? null
+  };
 }
 
 test("student home follows current student_id data", async ({ page }) => {
@@ -66,10 +76,10 @@ test("student home follows current student_id data", async ({ page }) => {
   await login(page, "parent@example.com");
 
   await switchStudent(page, "1", "林同学");
-  const a = await createDiagnosis(page, `student-a-${Date.now()}`, "math", "函数");
+  const a = await createDiagnosis(page, 1, `student-a-${Date.now()}`, "math", "函数");
 
   await switchStudent(page, "2", "林可可");
-  const b = await createDiagnosis(page, `student-b-${Date.now()}`, "english", "阅读定位");
+  const b = await createDiagnosis(page, 2, `student-b-${Date.now()}`, "english", "阅读定位");
 
   await page.goto("/student-home");
   await expect(page.locator('[data-testid="student-home-hero"]')).toContainText("林可可", { timeout: 30_000 });
@@ -89,13 +99,13 @@ test("parent overview keeps active summary isolated when switching students", as
   await login(page, "parent@example.com");
 
   await switchStudent(page, "1", "林同学");
-  await createDiagnosis(page, `overview-a-${Date.now()}`, "math", "函数");
+  await createDiagnosis(page, 1, `overview-a-${Date.now()}`, "math", "函数");
   await page.goto("/parent-overview");
   await expect(page.locator('[data-testid="parent-overview-active"]')).toContainText("林同学", { timeout: 30_000 });
   await expect(page.locator('[data-testid="parent-overview-active"]')).not.toContainText("林可可");
 
   await switchStudent(page, "2", "林可可");
-  await createDiagnosis(page, `overview-b-${Date.now()}`, "english", "阅读定位");
+  await createDiagnosis(page, 2, `overview-b-${Date.now()}`, "english", "阅读定位");
   await page.goto("/parent-overview");
   await expect(page.locator('[data-testid="parent-overview-active"]')).toContainText("林可可", { timeout: 30_000 });
   await expect(page.locator('[data-testid="parent-overview-active"]')).not.toContainText("林同学");
@@ -106,7 +116,7 @@ test("membership page entry and status display are correct", async ({ page }) =>
   await resetStudentAccess(page);
   await login(page, "parent@example.com");
   await switchStudent(page, "1", "林同学");
-  await createDiagnosis(page, `membership-${Date.now()}`, "math", "函数");
+  await createDiagnosis(page, 1, `membership-${Date.now()}`, "math", "函数");
 
   await page.goto("/parent-overview");
   await page.getByTestId("parent-overview-active-membership").click();
@@ -122,7 +132,7 @@ test("parent overview links to timeline and continue tracking correctly", async 
   await resetStudentAccess(page);
   await login(page, "parent@example.com");
   await switchStudent(page, "1", "林同学");
-  const a = await createDiagnosis(page, `path-a-${Date.now()}`, "math", "函数");
+  const a = await createDiagnosis(page, 1, `path-a-${Date.now()}`, "math", "函数");
 
   await page.goto("/parent-overview");
   await page.getByTestId("parent-overview-active-timeline").click();

@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import { resetStudentMembership, resetStudentTrialAccess, setStudentMembership } from "./membership-test-helpers";
+import { finalizeDraftByAdmin, restoreParentContext } from "./d1-review-helpers";
 
 const fixturePath = path.join(process.cwd(), "tests", "fixtures", "sample-upload.png");
 const logStore = new Map<string, string[]>();
@@ -42,7 +43,7 @@ async function switchStudent(page: Page, studentId: string, landing = "/dashboar
   await expect(page.locator("select").first()).toHaveValue(studentId, { timeout: 30_000 });
 }
 
-async function createDiagnosis(page: Page, tag: string, subject: "math" | "english", module: string) {
+async function createDiagnosis(page: Page, studentId: number, tag: string, subject: "math" | "english", module: string) {
   await page.goto("/upload");
   await page.locator('input[type="file"]').setInputFiles(fixturePath);
   await page.locator('select[name="subject"]').selectOption(subject);
@@ -50,9 +51,17 @@ async function createDiagnosis(page: Page, tag: string, subject: "math" | "engli
   await page.locator('input[name="scoreNote"]').fill(subject === "math" ? "75 / 100" : "83 / 100");
   await page.locator('input[name="note"]').fill(tag);
   await page.locator('textarea[name="studentSelfReport"]').fill(tag);
+  const uploadResponse = page.waitForResponse((response) => response.url().includes("/api/uploads") && response.request().method() === "POST");
   await page.locator('button[type="submit"]').click();
-  await expect(page).toHaveURL(/\/diagnosis\/\d+$/, { timeout: 180_000 });
-  const diagnosisId = Number(page.url().match(/\/diagnosis\/(\d+)$/)?.[1]);
+  const response = await uploadResponse;
+  const payload = await response.json() as { ok: boolean; draftId: number };
+  expect(payload.ok).toBeTruthy();
+  await expect(page).toHaveURL(/\/review-draft\/\d+$/, { timeout: 180_000 });
+  const draftId = Number(page.url().match(/\/review-draft\/(\d+)$/)?.[1] ?? payload.draftId);
+  const finalized = await finalizeDraftByAdmin(page, draftId);
+  await restoreParentContext(page, studentId);
+  await page.goto(`/diagnosis/${finalized.officialDiagnosisId}`);
+  const diagnosisId = Number(finalized.officialDiagnosisId ?? 0);
   expect(diagnosisId).toBeGreaterThan(0);
   return diagnosisId;
 }
@@ -63,7 +72,7 @@ test("can enter tracking offer page from timeline and choose take advice", async
   await setStudentMembership(page, 1, "self_service", { reason: "e2e conversion offer" });
   await login(page, "parent@example.com");
   await switchStudent(page, "1");
-  await createDiagnosis(page, `offer-a-${Date.now()}`, "math", "函数");
+  await createDiagnosis(page, 1, `offer-a-${Date.now()}`, "math", "函数");
 
   await page.goto("/timeline");
   await page.getByRole("button", { name: "继续追踪 4 周", exact: true }).click();
@@ -81,7 +90,7 @@ test("can continue from tracking offer page into recheck flow", async ({ page },
   await setStudentMembership(page, 1, "self_service", { reason: "e2e conversion continue" });
   await login(page, "parent@example.com");
   await switchStudent(page, "1");
-  await createDiagnosis(page, `offer-b-${Date.now()}`, "math", "函数");
+  await createDiagnosis(page, 1, `offer-b-${Date.now()}`, "math", "函数");
 
   await page.goto("/timeline");
   await page.getByRole("button", { name: "继续追踪 4 周", exact: true }).click();
@@ -115,9 +124,9 @@ test("admin control center student summary stays isolated", async ({ page }, tes
   await resetStudentAccess(page);
   await login(page, "parent@example.com");
   await switchStudent(page, "1");
-  await createDiagnosis(page, `control-a-${Date.now()}`, "math", "函数");
+  await createDiagnosis(page, 1, `control-a-${Date.now()}`, "math", "函数");
   await switchStudent(page, "2");
-  await createDiagnosis(page, `control-b-${Date.now()}`, "english", "阅读定位");
+  await createDiagnosis(page, 2, `control-b-${Date.now()}`, "english", "阅读定位");
 
   await login(page, "admin@example.com");
   await page.goto("/admin?student=1");

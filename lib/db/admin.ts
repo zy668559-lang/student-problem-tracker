@@ -1,4 +1,5 @@
-﻿import { getDb, getReviewQueue } from "@/lib/db";
+import { getDb } from "@/lib/db";
+import { getReviewQueue } from "@/lib/db/d1";
 import { ensureProductSchema, getSkillAssets, getStudentMemorySummary } from "@/lib/db/product";
 import type {
   AdminActionLog,

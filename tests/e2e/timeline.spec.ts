@@ -1,7 +1,8 @@
-﻿import fs from "node:fs/promises";
+import fs from "node:fs/promises";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import { resetStudentMembership, resetStudentTrialAccess, setStudentMembership } from "./membership-test-helpers";
+import { finalizeDraftByAdmin, restoreParentContext } from "./d1-review-helpers";
 
 const fixturePath = path.join(process.cwd(), "tests", "fixtures", "sample-upload.png");
 const logStore = new Map<string, string[]>();
@@ -44,7 +45,7 @@ async function switchStudent(page: Page, studentId: string, expectedName: string
   await expect(page.locator("main")).toContainText(`${expectedName} 的证据时间轴`, { timeout: 30_000 });
 }
 
-async function uploadForCurrentStudent(page: Page, studentLabel: string, module = "函数") {
+async function uploadForCurrentStudent(page: Page, studentId: number, studentLabel: string, module = "函数") {
   await page.goto("/upload");
   await page.locator('input[type="file"]').setInputFiles(fixturePath);
   await page.locator('select[name="subject"]').selectOption(module === "阅读定位" ? "english" : "math");
@@ -52,11 +53,19 @@ async function uploadForCurrentStudent(page: Page, studentLabel: string, module 
   await page.locator('input[name="scoreNote"]').fill(module === "阅读定位" ? "82 / 100" : "74 / 100");
   await page.locator('input[name="note"]').fill(`timeline ${studentLabel}`);
   await page.locator('textarea[name="studentSelfReport"]').fill(`timeline-${studentLabel}`);
+  const uploadResponse = page.waitForResponse((response) => response.url().includes("/api/uploads") && response.request().method() === "POST");
   await page.locator('button[type="submit"]').click();
-  await expect(page).toHaveURL(/\/diagnosis\/\d+$/, { timeout: 180_000 });
-  const diagnosisId = Number(page.url().match(/\/diagnosis\/(\d+)$/)?.[1]);
+  const response = await uploadResponse;
+  const payload = await response.json() as { ok: boolean; draftId: number };
+  expect(payload.ok).toBeTruthy();
+  await expect(page).toHaveURL(/\/review-draft\/\d+$/, { timeout: 180_000 });
+  const draftId = Number(page.url().match(/\/review-draft\/(\d+)$/)?.[1] ?? payload.draftId);
+  const finalized = await finalizeDraftByAdmin(page, draftId);
+  await restoreParentContext(page, studentId);
+  await page.goto(`/diagnosis/${finalized.officialDiagnosisId}`);
+  const diagnosisId = Number(page.url().match(/\/diagnosis\/(\d+)$/)?.[1] ?? finalized.officialDiagnosisId ?? 0);
   const weeklyHref = await page.locator('a[href^="/weekly-report/"]').last().getAttribute("href");
-  const weeklyReportId = Number(weeklyHref?.match(/\/weekly-report\/(\d+)$/)?.[1]);
+  const weeklyReportId = Number(weeklyHref?.match(/\/weekly-report\/(\d+)$/)?.[1] ?? finalized.officialWeeklyReportId ?? 0);
   expect(diagnosisId).toBeGreaterThan(0);
   expect(weeklyReportId).toBeGreaterThan(0);
   return { diagnosisId, weeklyReportId };
@@ -67,7 +76,7 @@ test("timeline page shows parent-friendly evidence nodes for current student", a
   await resetStudentAccess(page);
   await login(page, "parent@example.com");
   await switchStudent(page, "1", "林同学");
-  const created = await uploadForCurrentStudent(page, `A-${Date.now()}`);
+  const created = await uploadForCurrentStudent(page, 1, `A-${Date.now()}`);
 
   await page.goto("/timeline");
   await expect(page.locator("main")).toContainText("上次主要问题", { timeout: 30_000 });
@@ -86,10 +95,10 @@ test("timeline page stays isolated after switching between two students", async 
   await login(page, "parent@example.com");
 
   await switchStudent(page, "1", "林同学");
-  const a = await uploadForCurrentStudent(page, `student-a-${Date.now()}`);
+  const a = await uploadForCurrentStudent(page, 1, `student-a-${Date.now()}`);
 
   await switchStudent(page, "2", "林可可");
-  const b = await uploadForCurrentStudent(page, `student-b-${Date.now()}`, "阅读定位");
+  const b = await uploadForCurrentStudent(page, 2, `student-b-${Date.now()}`, "阅读定位");
 
   await switchStudent(page, "1", "林同学");
   await expect(page.locator(`a[href="/diagnosis/${a.diagnosisId}"]`).first()).toBeVisible();

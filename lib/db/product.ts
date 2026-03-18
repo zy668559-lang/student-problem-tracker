@@ -356,13 +356,22 @@ export function validateUploadAccess(studentId: number, subject: Subject, imageC
   return { ok: true, access } as const;
 }
 
-export function recordUploadMeta(uploadId: number, input: { stuckPointChoice?: string | null; stuckPointSource: StuckPointSource; stepsText?: string | null; hasSteps: boolean; stepQuality: StepQuality; imageCount: number; diagnosisMode: DiagnosisMode; }) {
+export function consumeTrialAccessUsage(studentId: number) {
+  ensureProductSchema();
+  const db = getDb();
+  db.prepare(`UPDATE trial_access SET free_trial_used = free_trial_used + 1, updated_at = ? WHERE student_id = ?`)
+    .run(new Date().toISOString(), studentId);
+}
+
+export function recordUploadMeta(uploadId: number, input: { stuckPointChoice?: string | null; stuckPointSource: StuckPointSource; stepsText?: string | null; hasSteps: boolean; stepQuality: StepQuality; imageCount: number; diagnosisMode: DiagnosisMode; skipTrialUsageIncrement?: boolean; }) {
   ensureProductSchema();
   const db = getDb();
   db.prepare(`UPDATE uploads SET stuck_point_choice = ?, stuck_point_source = ?, steps_text = ?, has_steps = ?, step_quality = ?, image_count = ?, diagnosis_mode = ? WHERE id = ?`)
     .run(input.stuckPointChoice ?? null, input.stuckPointSource, input.stepsText ?? null, input.hasSteps ? 1 : 0, input.stepQuality, input.imageCount, input.diagnosisMode, uploadId);
-  db.prepare(`UPDATE trial_access SET free_trial_used = free_trial_used + 1, updated_at = ? WHERE student_id = (SELECT student_id FROM uploads WHERE id = ?)`)
-    .run(new Date().toISOString(), uploadId);
+  if (!input.skipTrialUsageIncrement) {
+    db.prepare(`UPDATE trial_access SET free_trial_used = free_trial_used + 1, updated_at = ? WHERE student_id = (SELECT student_id FROM uploads WHERE id = ?)`)
+      .run(new Date().toISOString(), uploadId);
+  }
 }
 
 export function enrichDiagnosisRecord(diagnosisId: number, input: { draftDiagnosis: DiagnosisPayload; diagnosisMode: DiagnosisMode; promptVersion: string; approvedDiagnosis?: DiagnosisPayload | null; reviewNotes?: string | null; reviewDiff?: Record<string, unknown> | null; }) {

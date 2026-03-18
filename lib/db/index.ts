@@ -581,10 +581,13 @@ export function getReviewQueue(): ReviewQueueItem[] {
   const rows = db
     .prepare(
       `
-        SELECT d.id, d.subject, d.module, d.review_status, d.confidence, d.created_at, d.diagnosis_json, s.name AS student_name
+        SELECT d.id, d.subject, d.module, d.review_status, d.confidence, d.created_at, d.updated_at, d.diagnosis_json,
+               s.id AS student_id, s.name AS student_name,
+               p.id AS parent_account_id, p.name AS parent_name, p.email AS parent_email
         FROM diagnoses d
         INNER JOIN uploads u ON u.id = d.upload_id
         INNER JOIN students s ON s.id = u.student_id
+        INNER JOIN users p ON p.id = s.user_id
         ORDER BY
           CASE d.review_status
             WHEN 'pending' THEN 0
@@ -597,24 +600,36 @@ export function getReviewQueue(): ReviewQueueItem[] {
     )
     .all() as Array<{
     id: number;
+    student_id: number;
+    parent_account_id: number;
     subject: Subject;
     module: string;
     review_status: ReviewStatus;
     confidence: number;
     created_at: string;
+    updated_at: string;
     diagnosis_json: string;
     student_name: string;
+    parent_name: string;
+    parent_email: string;
   }>;
 
   return rows.map((row) => ({
     id: row.id,
+    studentId: row.student_id,
+    parentAccountId: row.parent_account_id,
     studentName: row.student_name,
+    parentName: row.parent_name,
+    parentEmail: row.parent_email,
     subject: row.subject,
     module: row.module,
     reviewStatus: row.review_status,
     confidence: row.confidence,
     createdAt: row.created_at,
-    payload: parseJsonObject(row.diagnosis_json, MOCK_DIAGNOSIS_TEMPLATES[row.subject][0])
+    updatedAt: row.updated_at,
+    payload: parseJsonObject(row.diagnosis_json, MOCK_DIAGNOSIS_TEMPLATES[row.subject][0]),
+    officialDiagnosisId: row.id,
+    officialWeeklyReportId: null
   }));
 }
 

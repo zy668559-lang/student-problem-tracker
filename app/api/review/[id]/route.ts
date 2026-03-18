@@ -1,21 +1,8 @@
 ﻿import { NextResponse } from "next/server";
-import {
-  getReviewContext,
-  replaceRepairTasksForDiagnosis,
-  updateDiagnosisReview,
-  upsertWeeklyReport
-} from "@/lib/db";
-import { attachWeeklyReportToRecheckTasks, syncRecheckForDiagnosis } from "@/lib/db/recheck";
-import { ensureHeartbeatSchema, syncHeartbeatForStudent } from "@/lib/db/heartbeat";
-import {
-  appendStructuredChangeLog,
-  ensureProductSchema,
-  storeReviewedDiagnosis,
-  upsertStudentMemorySummary
-} from "@/lib/db/product";
-import { decorateWeeklyPayload, ensureP25Schema, persistWeeklyReportArtifacts } from "@/lib/db/p25";
-import { generateWeeklyReport } from "@/lib/services/ai";
+import { appendAdminActionLog } from "@/lib/db/admin";
+import { approveReviewDraft, ensureD1Schema, getReviewDraftDetail, updateReviewDraft } from "@/lib/db/d1";
 import { rewriteDiagnosisForChenTeacher } from "@/lib/services/tone-chen";
+import { parseSessionFromCookieHeader } from "@/lib/session";
 import type { DiagnosisPayload, ReviewStatus } from "@/lib/types";
 
 function isValidDiagnosisPayload(value: unknown): value is DiagnosisPayload {
@@ -40,12 +27,14 @@ function mapActionToStatus(action: string): ReviewStatus {
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  ensureProductSchema();
-  ensureP25Schema();
-  ensureHeartbeatSchema();
+  ensureD1Schema();
   const { id } = await params;
-  const body = (await request.json()) as { action?: string; payloadText?: string; reviewNotes?: string };
+  const session = parseSessionFromCookieHeader(request.headers.get("cookie"));
+  if (!session || (session.role !== "admin" && session.role !== "reviewer")) {
+    return NextResponse.json({ ok: false, message: "这一步只给后台审核位处理。" }, { status: 403 });
+  }
 
+  const body = (await request.json()) as { action?: string; payloadText?: string; reviewNotes?: string };
   if (!body.action || !body.payloadText) {
     return NextResponse.json({ ok: false, message: "审核动作和 JSON 这次还没给全。" }, { status: 400 });
   }
@@ -61,79 +50,68 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ ok: false, message: "这段诊断字段还不齐，我先不往正式档案里写。" }, { status: 400 });
   }
 
-  const context = getReviewContext(Number(id));
-  if (!context) {
-    return NextResponse.json({ ok: false, message: "这条诊断我这边没找到。" }, { status: 404 });
+  const draftId = Number(id);
+  const current = getReviewDraftDetail(draftId);
+  if (!current) {
+    return NextResponse.json({ ok: false, message: "这条草稿我这边没找到。" }, { status: 404 });
   }
 
   const reviewStatus = mapActionToStatus(body.action);
-  const normalizedPayload = rewriteDiagnosisForChenTeacher({ ...parsed, review_status: reviewStatus });
-
-  updateDiagnosisReview(Number(id), normalizedPayload, reviewStatus);
-  const reviewDiff = storeReviewedDiagnosis(Number(id), normalizedPayload, reviewStatus, body.reviewNotes ?? null);
-  replaceRepairTasksForDiagnosis(Number(id), context.student_id, normalizedPayload.subject, normalizedPayload.module, normalizedPayload.repair_actions, reviewStatus);
-
-  appendStructuredChangeLog({
-    studentId: context.student_id,
-    subject: normalizedPayload.subject,
-    module: normalizedPayload.module,
-    changeType: reviewStatus,
-    description: reviewStatus === "approved"
-      ? "这条诊断我先给你通过了，正式档案就按这个版本走。"
-      : reviewStatus === "edited"
-        ? "这条诊断我先替你改过了，后面家长端看到的是老师确认版。"
-        : "这条诊断我先驳回，等下一轮重新判断。",
-    relatedDiagnosisId: Number(id),
-    stabilizedIssues: reviewStatus === "approved" ? normalizedPayload.problem_tags.slice(0, 2) : [],
-    unstableIssues: reviewStatus === "rejected" ? normalizedPayload.problem_tags.slice(0, 3) : [normalizedPayload.current_stage],
-    repeatedErrorTags: normalizedPayload.problem_tags.slice(0, 3),
-    evidenceSummary: body.reviewNotes ?? "这次没有额外备注，先按老师确认结果入档。"
+  const normalizedPayload = rewriteDiagnosisForChenTeacher({
+    ...parsed,
+    subject: current.subject,
+    module: (parsed as DiagnosisPayload).module,
+    review_status: reviewStatus
   });
 
-  const recheck = syncRecheckForDiagnosis(Number(id));
-  if (recheck.task) {
-    appendStructuredChangeLog({
-      studentId: context.student_id,
-      subject: normalizedPayload.subject,
-      module: normalizedPayload.module,
-      changeType: recheck.task.stabilized ? "stabilized" : "recheck_progress",
-      description: recheck.recheckSummary,
-      relatedDiagnosisId: Number(id),
-      stabilizedIssues: recheck.task.stabilized ? [recheck.task.tag] : [],
-      unstableIssues: recheck.task.stabilized ? [] : [recheck.task.tag],
-      repeatedErrorTags: [recheck.task.tag],
-      evidenceSummary: recheck.continueTrackingReason,
-      recheckTaskId: recheck.task.id,
-      repeatCount7d: recheck.task.repeatCount7d,
-      repeatCount30d: recheck.task.repeatCount30d,
-      lastSeenAt: recheck.task.lastSeenAt,
-      lastRecheckAt: recheck.task.lastRecheckAt,
-      stabilizedScore: recheck.task.stabilizedScore,
-      nextPriority: recheck.nextPriority,
-      nextRecheckReason: recheck.nextRecheckReason,
-      nextActionType: recheck.nextActionType,
-      stabilized: recheck.task.stabilized
+  if (reviewStatus === "approved") {
+    const result = await approveReviewDraft({
+      draftId,
+      payload: normalizedPayload,
+      reviewNotes: body.reviewNotes ?? null,
+      adminSession: session
+    });
+
+    return NextResponse.json({
+      ok: true,
+      draftId,
+      reviewStatus,
+      reviewDiff: result.reviewDiff,
+      officialDiagnosisId: result.officialDiagnosisId,
+      officialWeeklyReportId: result.officialWeeklyReportId,
+      recheckTaskId: result.recheckTaskId
     });
   }
 
-  const weeklyBase = await generateWeeklyReport(context.student_id);
-  const weekly = decorateWeeklyPayload(context.student_id, weeklyBase, "instant");
-  const weeklyReportId = upsertWeeklyReport(context.student_id, weekly.payload);
-  persistWeeklyReportArtifacts({
-    reportId: weeklyReportId,
-    mode: "instant",
-    studentReportJson: weekly.studentReportJson,
-    continueTrackingRecommended: weekly.continueTrackingRecommended,
-    batchGeneratedAt: null
+  const updated = updateReviewDraft({
+    draftId,
+    payload: normalizedPayload,
+    reviewStatus,
+    reviewNotes: body.reviewNotes ?? null
   });
-  attachWeeklyReportToRecheckTasks(context.student_id, weeklyReportId);
-  upsertStudentMemorySummary(context.student_id);
+  if (!updated?.detail) {
+    return NextResponse.json({ ok: false, message: "这条草稿更新失败了。" }, { status: 500 });
+  }
 
-  syncHeartbeatForStudent(context.student_id, "review_update");
-  return NextResponse.json({ ok: true, reviewDiff, recheckTaskId: recheck.task?.id ?? null, weeklyReportId });
+  appendAdminActionLog({
+    userId: session.userId,
+    userRole: session.role,
+    actionType: reviewStatus === "edited" ? "edit_review_draft" : "reject_review_draft",
+    targetType: "review_draft",
+    targetId: draftId,
+    detail: reviewStatus === "edited"
+      ? `保存草稿修改：student=${updated.detail.studentId}`
+      : `驳回草稿：student=${updated.detail.studentId}`
+  });
+
+  return NextResponse.json({
+    ok: true,
+    draftId,
+    reviewStatus,
+    reviewDiff: updated.reviewDiff,
+    officialDiagnosisId: updated.detail.officialDiagnosisId,
+    officialWeeklyReportId: updated.detail.officialWeeklyReportId,
+    recheckTaskId: null
+  });
 }
-
-
-
-
 

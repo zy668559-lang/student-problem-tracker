@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import { resetStudentMembership, resetStudentTrialAccess, setStudentMembership } from "./membership-test-helpers";
+import { finalizeDraftByAdmin, restoreParentContext } from "./d1-review-helpers";
 
 const fixturePath = path.join(process.cwd(), "tests", "fixtures", "sample-upload.png");
 const logStore = new Map<string, string[]>();
@@ -42,7 +43,7 @@ async function switchStudent(page: Page, studentId: string) {
   await expect(page.locator("select").first()).toHaveValue(studentId, { timeout: 30_000 });
 }
 
-async function createDiagnosis(page: Page, studentLabel: string, subject: "math" | "english", module: string) {
+async function createDiagnosis(page: Page, studentId: number, studentLabel: string, subject: "math" | "english", module: string) {
   await page.goto("/upload");
   await page.locator('input[type="file"]').setInputFiles(fixturePath);
   await page.locator('select[name="subject"]').selectOption(subject);
@@ -53,10 +54,14 @@ async function createDiagnosis(page: Page, studentLabel: string, subject: "math"
   const uploadResponse = page.waitForResponse((response) => response.url().includes("/api/uploads") && response.request().method() === "POST");
   await page.locator('button[type="submit"]').click();
   const response = await uploadResponse;
-  const payload = await response.json() as { ok: boolean; diagnosisId: number };
+  const payload = await response.json() as { ok: boolean; draftId: number };
   expect(payload.ok).toBeTruthy();
-  await expect(page).toHaveURL(/\/diagnosis\/\d+$/, { timeout: 180_000 });
-  return payload.diagnosisId;
+  await expect(page).toHaveURL(/\/review-draft\/\d+$/, { timeout: 180_000 });
+  const draftId = Number(page.url().match(/\/review-draft\/(\d+)$/)?.[1] ?? payload.draftId);
+  const finalized = await finalizeDraftByAdmin(page, draftId);
+  await restoreParentContext(page, studentId);
+  await page.goto(`/diagnosis/${finalized.officialDiagnosisId}`);
+  return Number(finalized.officialDiagnosisId ?? 0);
 }
 
 async function saveMembershipAction(page: Page, studentId: number) {
@@ -75,14 +80,14 @@ test("three membership tiers and cta stay aligned per student", async ({ page },
   await login(page, "parent@example.com");
 
   await switchStudent(page, "1");
-  await createDiagnosis(page, `student-a-${Date.now()}`, "math", "函数");
+  await createDiagnosis(page, 1, `student-a-${Date.now()}`, "math", "函数");
   await page.goto("/student-home");
   await expect(page.locator("main")).toContainText("想升级陪跑会员", { timeout: 30_000 });
   await page.goto("/membership");
   await expect(page.locator('[data-testid="membership-status"]')).toContainText("自助会员", { timeout: 30_000 });
 
   await switchStudent(page, "2");
-  await createDiagnosis(page, `student-b-${Date.now()}`, "english", "阅读定位");
+  await createDiagnosis(page, 2, `student-b-${Date.now()}`, "english", "阅读定位");
   await page.goto("/student-home");
   await expect(page.locator("main")).toContainText("继续按陪跑节奏走", { timeout: 30_000 });
   await page.goto("/membership");
@@ -96,7 +101,7 @@ test("membership permissions and page prompts change with tier", async ({ page }
 
   await login(page, "parent@example.com");
   await switchStudent(page, "1");
-  const diagnosisId = await createDiagnosis(page, `trial-${Date.now()}`, "math", "函数");
+  const diagnosisId = await createDiagnosis(page, 1, `trial-${Date.now()}`, "math", "函数");
 
   await page.goto("/timeline");
   await expect(page.locator('[data-testid^="timeline-node-"]')).toHaveCount(0);

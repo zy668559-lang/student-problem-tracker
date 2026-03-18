@@ -28,7 +28,12 @@ async function login(page: Page, email: string) {
   await page.goto("/login");
   await page.locator('input[name="email"]').fill(email);
   await page.locator('input[name="password"]').fill("demo123");
+  const loginResponse = page.waitForResponse((response) => response.url().includes("/api/auth/login") && response.request().method() === "POST");
   await page.locator('button[type="submit"]').click();
+  const response = await loginResponse;
+  const payload = await response.json() as { ok?: boolean; message?: string };
+  expect(response.ok(), payload.message ?? 'login response failed').toBeTruthy();
+  expect(payload.ok, payload.message ?? 'login payload not ok').toBeTruthy();
   await expect(page).toHaveURL(/\/dashboard$/, { timeout: 30_000 });
 }
 

@@ -1,7 +1,8 @@
-﻿import fs from "node:fs/promises";
+import fs from "node:fs/promises";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import { resetStudentMembership, resetStudentTrialAccess, setStudentMembership } from "./membership-test-helpers";
+import { finalizeDraftByAdmin, restoreParentContext } from "./d1-review-helpers";
 
 const fixturePath = path.join(process.cwd(), "tests", "fixtures", "sample-upload.png");
 const logStore = new Map<string, string[]>();
@@ -51,7 +52,7 @@ async function switchStudent(page: Page, studentId: string, landing = "/dashboar
   await expect(page.locator("select").first()).toHaveValue(studentId, { timeout: 30_000 });
 }
 
-async function createDiagnosis(page: Page, tag: string, subject: "math" | "english", module: string) {
+async function createDiagnosis(page: Page, studentId: number, tag: string, subject: "math" | "english", module: string) {
   await page.goto("/upload");
   await page.locator('input[type="file"]').setInputFiles(fixturePath);
   await page.locator('select[name="subject"]').selectOption(subject);
@@ -59,14 +60,17 @@ async function createDiagnosis(page: Page, tag: string, subject: "math" | "engli
   await page.locator('input[name="scoreNote"]').fill(subject === "math" ? "71 / 100" : "82 / 100");
   await page.locator('input[name="note"]').fill(tag);
   await page.locator('textarea[name="studentSelfReport"]').fill(tag);
-
   const uploadResponse = page.waitForResponse((response) => response.url().includes("/api/uploads") && response.request().method() === "POST");
   await page.locator('button[type="submit"]').click();
   const response = await uploadResponse;
-  const payload = await response.json() as { ok: boolean; diagnosisId: number; recheckTaskId: number | null; weeklyReportId: number | null };
+  const payload = await response.json() as { ok: boolean; draftId: number };
   expect(payload.ok).toBeTruthy();
-  await expect(page).toHaveURL(/\/diagnosis\/\d+$/, { timeout: 180_000 });
-  return payload;
+  await expect(page).toHaveURL(/\/review-draft\/\d+$/, { timeout: 180_000 });
+  const draftId = Number(page.url().match(/\/review-draft\/(\d+)$/)?.[1] ?? payload.draftId);
+  const finalized = await finalizeDraftByAdmin(page, draftId);
+  await restoreParentContext(page, studentId);
+  await page.goto(`/diagnosis/${finalized.officialDiagnosisId}`);
+  return { ok: true, diagnosisId: Number(finalized.officialDiagnosisId ?? 0), recheckTaskId: finalized.recheckTaskId ?? null, weeklyReportId: finalized.officialWeeklyReportId ?? null };
 }
 
 async function clickDiagnosisContinueTracking(page: Page) {
@@ -104,13 +108,13 @@ test("heartbeat manual run creates followup and recheck events from existing pro
 
   await loginParent(page);
   await switchStudent(page, "1");
-  await createDiagnosis(page, `Heartbeat-Followup-${Date.now()}`, "math", "函数");
+  await createDiagnosis(page, 1, `Heartbeat-Followup-${Date.now()}`, "math", "函数");
   await clickDiagnosisContinueTracking(page);
 
   await switchStudent(page, "2");
-  const first = await createDiagnosis(page, recheckTag, "math", "函数");
+  const first = await createDiagnosis(page, 2, recheckTag, "math", "函数");
   expect(first.recheckTaskId).toBeTruthy();
-  const second = await createDiagnosis(page, recheckTag, "math", "函数");
+  const second = await createDiagnosis(page, 2, recheckTag, "math", "函数");
   expect(second.recheckTaskId).toBe(first.recheckTaskId);
 
   await loginAdmin(page);
@@ -129,7 +133,7 @@ test("heartbeat events stay isolated across two students", async ({ page }, test
 
   await loginParent(page);
   await switchStudent(page, "2");
-  await createDiagnosis(page, `Heartbeat-Isolation-${Date.now()}`, "english", "阅读定位");
+  await createDiagnosis(page, 2, `Heartbeat-Isolation-${Date.now()}`, "english", "阅读定位");
   await clickDiagnosisContinueTracking(page);
 
   await loginAdmin(page);
@@ -149,13 +153,13 @@ test("admin control center shows heartbeat pending queues", async ({ page }, tes
 
   await loginParent(page);
   await switchStudent(page, "1");
-  await createDiagnosis(page, `Heartbeat-Control-Followup-${Date.now()}`, "math", "函数");
+  await createDiagnosis(page, 1, `Heartbeat-Control-Followup-${Date.now()}`, "math", "函数");
   await clickDiagnosisContinueTracking(page);
 
   await switchStudent(page, "2");
-  const first = await createDiagnosis(page, recheckTag, "math", "函数");
+  const first = await createDiagnosis(page, 2, recheckTag, "math", "函数");
   expect(first.recheckTaskId).toBeTruthy();
-  await createDiagnosis(page, recheckTag, "math", "函数");
+  await createDiagnosis(page, 2, recheckTag, "math", "函数");
 
   await loginAdmin(page);
   await forceTaskBackToRecheckDue(page, Number(first.recheckTaskId));

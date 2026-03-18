@@ -1,4 +1,4 @@
-﻿import { ENGLISH_BACKEND_TAGS, MOCK_DIAGNOSIS_TEMPLATES } from "@/lib/mock-data";
+import { ENGLISH_BACKEND_TAGS, MOCK_DIAGNOSIS_TEMPLATES } from "@/lib/mock-data";
 import { getStudentDiagnoses } from "@/lib/db";
 import { getWeeklyReportRecheckOverlay } from "@/lib/db/recheck";
 import { createModelCallLog, getStudentMemorySummary } from "@/lib/db/product";
@@ -7,7 +7,7 @@ import type { DiagnosisMode, DiagnosisPayload, StepQuality, StuckPointSource, Su
 
 export interface AnalyzeUploadInput {
   studentId: number;
-  uploadId: number;
+  uploadId: number | null;
   subject: Subject;
   module: string;
   scoreNote?: string | null;
