@@ -12,7 +12,7 @@ const parentNavGroups = [
     title: "家长视角",
     items: [
       { href: "/parent-overview", label: "家长总览" },
-      { href: "/membership", label: "\u4e09\u79cd\u65b9\u5f0f\u5dee\u5728\u54ea" }
+      { href: "/membership", label: "会员分层" }
     ]
   },
   {

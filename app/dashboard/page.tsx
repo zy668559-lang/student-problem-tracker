@@ -137,8 +137,8 @@ export default async function DashboardPage() {
             <p className="mt-2 text-sm text-slate">聚合一周变化、未稳项和下周计划</p>
           </Link>
           <Link href="/timeline" className="rounded-3xl border border-line bg-white px-5 py-5">
-            <p className="text-lg font-semibold text-ink">证据时间轴</p>
-            <p className="mt-2 text-sm text-slate">把上周到这周的诊断、复检、周报和变化串起来看</p>
+            <p className="text-lg font-semibold text-ink">变化记录</p>
+            <p className="mt-2 text-sm text-slate">把上周到这周的问题、回看、每周小结和变化顺着看</p>
           </Link>
         </div>
       </SectionCard>
