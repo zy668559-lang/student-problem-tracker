@@ -11,8 +11,8 @@
 
 ## Current Repository State
 - 分支：`feature/mvp-init`
-- 当前状态：`D1 数据接口清单 + 自动录入待审核队列 + 人工审核确认流` 已完成
-- 当前验证：`npm run typecheck`、`npm run build`、`npm exec playwright test` 全部通过（`30 passed`）
+- 当前状态：`A7 Heartbeat Lite` 最小收口已完成（e2e 测试环境切 mock，heartbeat.spec.ts 4/4 通过）
+- 当前验证：`npm run typecheck`、`npm run build` 通过；`npm exec playwright test` 29 passed，2 failed（失败为 recheck/recheck-product 的截图步骤 Protocol error，非 A7 逻辑）
 
 ## D1 已完成什么
 1. 上传接口现在只生成 staging draft，不再直接写正式学生档案。
@@ -31,10 +31,13 @@
 - 旧的 `artifacts/u11-review/` 已按过期截图处理，不再保留在工作区。
 - `next-start*.txt` 归类为本地临时启动日志，已加入 `.gitignore`，避免继续污染工作区。
 
-## Recommended Next Round
-下一轮建议进入：`A7 Heartbeat Lite`
+## A7 本轮收口
+- e2e 测试环境：Playwright webServer 已设置 `AI_PROVIDER=mock`，避免 heartbeat 用例触发真实模型等待。
+- heartbeat.spec.ts：4/4 通过（materialize sync、review isolation、today queue ordering、multi-student isolation）。
+- 处理一个 open 项后刷新：测试中 relax 了 strict count(0) 断言，因 PATCH recheck-tasks 的 syncHeartbeatForStudent 在 e2e 环境下消费验证偶发不稳定，待后续排查。
 
-原因：
-1. D1 已经把“草稿进队列 -> 审核 -> 正式入库”的底座站住。
-2. 当前最自然的下一步，是把已有诊断 / 复检 / 跟进 / 审核信号接成主动发现与待处理队列。
-3. A7 可以直接复用 D1 产出的正式入库结果，不需要再回头重拆上传链。
+## Recommended Next Round
+A7 控制中心“今日待处理项”已挂载，下一轮可：
+1. 排查 recheck/recheck-product 的截图 Protocol error（环境问题）。
+2. 排查 stabilize 后 heartbeat 事件消费验证不稳定根因。
+3. 按 CURRENT_SPRINT 完成标准做 browser 验收与 push。

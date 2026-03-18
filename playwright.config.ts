@@ -24,7 +24,8 @@ export default defineConfig({
     command: "npm.cmd run start -- --hostname 127.0.0.1 --port 3000",
     url: "http://127.0.0.1:3000/login",
     reuseExistingServer: true,
-    timeout: 120_000
+    timeout: 120_000,
+    env: { ...process.env, AI_PROVIDER: "mock" }
   },
   projects: [
     {

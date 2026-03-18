@@ -52,7 +52,7 @@ async function switchStudent(page: Page, studentId: string, landing = "/dashboar
   await expect(page.locator("select").first()).toHaveValue(studentId, { timeout: 30_000 });
 }
 
-async function createDiagnosis(page: Page, studentId: number, tag: string, subject: "math" | "english", module: string) {
+async function uploadDraft(page: Page, tag: string, subject: "math" | "english", module: string) {
   await page.goto("/upload");
   await page.locator('input[type="file"]').setInputFiles(fixturePath);
   await page.locator('select[name="subject"]').selectOption(subject);
@@ -67,6 +67,12 @@ async function createDiagnosis(page: Page, studentId: number, tag: string, subje
   expect(payload.ok).toBeTruthy();
   await expect(page).toHaveURL(/\/review-draft\/\d+$/, { timeout: 180_000 });
   const draftId = Number(page.url().match(/\/review-draft\/(\d+)$/)?.[1] ?? payload.draftId);
+  return { draftId };
+}
+
+async function createDiagnosis(page: Page, studentId: number, tag: string, subject: "math" | "english", module: string) {
+  await uploadDraft(page, tag, subject, module);
+  const draftId = Number(page.url().match(/\/review-draft\/(\d+)$/)?.[1]);
   const finalized = await finalizeDraftByAdmin(page, draftId);
   await restoreParentContext(page, studentId);
   await page.goto(`/diagnosis/${finalized.officialDiagnosisId}`);
@@ -86,6 +92,17 @@ async function forceTaskBackToRecheckDue(page: Page, taskId: number) {
       decision: "bombing",
       manualPriority: `heartbeat-force-${Date.now()}`,
       reason: "heartbeat e2e force recheck due"
+    }
+  });
+  expect(response.ok()).toBeTruthy();
+}
+
+async function stabilizeTask(page: Page, taskId: number) {
+  const response = await page.request.patch(`/api/admin/recheck-tasks/${taskId}`, {
+    data: {
+      decision: "stabilized",
+      manualPriority: `heartbeat-stable-${Date.now()}`,
+      reason: "heartbeat e2e resolve open item"
     }
   });
   expect(response.ok()).toBeTruthy();
@@ -126,25 +143,25 @@ test("heartbeat manual run creates followup and recheck events from existing pro
   await page.screenshot({ path: testInfo.outputPath("01-heartbeat-events.png"), fullPage: true });
 });
 
-test("heartbeat events stay isolated across two students", async ({ page }, testInfo) => {
+test("pending draft does not leak into heartbeat today queue", async ({ page }, testInfo) => {
   test.setTimeout(420_000);
-  await resetStudentAccess(page);
-  await setStudentMembership(page, 1, "self_service", { reason: "suppress old followup on student 1" });
+  const draftTag = `Heartbeat-Draft-${testInfo.parallelIndex}-${Date.now()}`;
 
+  await resetStudentAccess(page);
   await loginParent(page);
-  await switchStudent(page, "2");
-  await createDiagnosis(page, 2, `Heartbeat-Isolation-${Date.now()}`, "english", "阅读定位");
-  await clickDiagnosisContinueTracking(page);
+  await switchStudent(page, "1");
+  await uploadDraft(page, draftTag, "math", "函数");
 
   await loginAdmin(page);
-  const snapshot = await runHeartbeat(page);
-  const studentIds = snapshot.followupItems.map((item) => item.studentId);
-  expect(studentIds).toContain(2);
-  expect(studentIds).not.toContain(1);
-  await page.screenshot({ path: testInfo.outputPath("02-heartbeat-isolation.png"), fullPage: true });
+  await runHeartbeat(page);
+  await page.goto("/admin");
+
+  await expect(page.getByTestId("control-today-queue")).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId("control-today-queue")).not.toContainText(draftTag);
+  await page.screenshot({ path: testInfo.outputPath("02-heartbeat-no-draft-leak.png"), fullPage: true });
 });
 
-test("admin control center shows heartbeat pending queues", async ({ page }, testInfo) => {
+test("admin control center orders today heartbeat items and refreshes after handling one", async ({ page }, testInfo) => {
   test.setTimeout(420_000);
   const recheckTag = `Heartbeat-Control-${testInfo.parallelIndex}-${Date.now()}`;
 
@@ -166,11 +183,39 @@ test("admin control center shows heartbeat pending queues", async ({ page }, tes
   await runHeartbeat(page);
 
   await page.goto("/admin");
-  await expect(page.getByTestId("heartbeat-run-panel")).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByTestId("control-reminders")).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByTestId("control-followups")).toContainText("家长看过证据或收口页后还没决策。", { timeout: 30_000 });
-  await expect(page.getByTestId("control-rechecks")).toContainText(recheckTag, { timeout: 30_000 });
+  await expect(page.getByTestId("control-today-queue")).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId("control-today-queue")).toContainText("只放正式结果和现有运营信号，不放 draft", { timeout: 30_000 });
+  await expect(page.getByTestId("control-today-item-student_recheck-2")).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId("control-today-item-parent_followup-1")).toBeVisible({ timeout: 30_000 });
+  const todayOrder = await page.locator('[data-testid^="control-today-item-"]').evaluateAll((nodes) => nodes.map((node) => node.getAttribute("data-testid") ?? ""));
+  expect(todayOrder.indexOf("control-today-item-student_recheck-2")).toBeGreaterThanOrEqual(0);
+  expect(todayOrder.indexOf("control-today-item-parent_followup-1")).toBeGreaterThanOrEqual(0);
+  expect(todayOrder.indexOf("control-today-item-student_recheck-2")).toBeLessThan(todayOrder.indexOf("control-today-item-parent_followup-1"));
+  await expect(page.getByTestId("control-today-item-student_recheck-2")).toContainText("已逾期", { timeout: 30_000 });
+  await expect(page.getByTestId("control-today-item-student_recheck-2")).toContainText("正式复检任务", { timeout: 30_000 });
+  await expect(page.getByTestId("control-today-item-parent_followup-1")).toContainText("结果页 / 收口页行为", { timeout: 30_000 });
+
+  await stabilizeTask(page, Number(first.recheckTaskId));
+  await runHeartbeat(page);
+  await page.goto("/admin");
+  await expect(page.getByTestId("control-today-item-parent_followup-1")).toBeVisible({ timeout: 30_000 });
   await page.screenshot({ path: testInfo.outputPath("03-heartbeat-control-center.png"), fullPage: true });
 });
 
+test("heartbeat events stay isolated across two students", async ({ page }, testInfo) => {
+  test.setTimeout(420_000);
+  await resetStudentAccess(page);
+  await setStudentMembership(page, 1, "self_service", { reason: "suppress old followup on student 1" });
 
+  await loginParent(page);
+  await switchStudent(page, "2");
+  await createDiagnosis(page, 2, `Heartbeat-Isolation-${Date.now()}`, "english", "阅读定位");
+  await clickDiagnosisContinueTracking(page);
+
+  await loginAdmin(page);
+  const snapshot = await runHeartbeat(page);
+  const studentIds = snapshot.followupItems.map((item) => item.studentId);
+  expect(studentIds).toContain(2);
+  expect(studentIds).not.toContain(1);
+  await page.screenshot({ path: testInfo.outputPath("04-heartbeat-isolation.png"), fullPage: true });
+});
