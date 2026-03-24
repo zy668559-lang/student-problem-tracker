@@ -11,8 +11,8 @@
 
 ## Current Repository State
 - 分支：`feature/mvp-init`
-- 当前状态：A7/W1 收口已完成，当前进入 `M1 数学交互演示模块（直播展示样板层）`。
-- 最近验证：`npm run typecheck`、`npm run build` 通过；`npm exec playwright test` 29 passed，2 failed（失败为 recheck/recheck-product 的截图步骤 Protocol error，非 A7 逻辑）
+- 当前状态：进入 `M1 第一批全自动验收收口轮`。
+- 最近验证：`npm run typecheck` 通过；`npm run build` 通过；`npm exec playwright test` 全量执行超时未完成；`tests/e2e/showcase-first-batch.spec.ts` 2/2 通过。
 
 ## D1 已完成什么
 1. 上传接口现在只生成 staging draft，不再直接写正式学生档案。
@@ -36,20 +36,10 @@
 - heartbeat.spec.ts：4/4 通过（materialize sync、review isolation、today queue ordering、multi-student isolation）。
 - 处理一个 open 项后刷新：测试中 relax 了 strict count(0) 断言，因 PATCH recheck-tasks 的 syncHeartbeatForStudent 在 e2e 环境下消费验证偶发不稳定，待后续排查。
 
-## Recommended Next Round
-M1 进入“直播展示样板层”落地阶段，下一步：
-1. 按 `docs/M1_INTERACTIVE_MATH_DEMOS.md` 落地 4 个展示页（仅 /showcase 或 /demo）。
-2. 保持主链不动，完成桌面端优先的稳定交互。
-3. 实施完后按规则跑 `npm run typecheck` / `npm run build` / `npm exec playwright test` 并 push 到 `github/gitee` feature 分支。
+## M1 口径冻结
+- M1 标题 / 副标题 / 按钮 / 口播口径已冻结，详见 `docs/M1_INTERACTIVE_MATH_DEMOS.md`。
 
-## M1 ????
-- M1 ?? / ??? / ?? / ?????????? `docs/M1_INTERACTIVE_MATH_DEMOS.md`?
-- ????? M1 ????????????1?????1?
-- ????????1?????1????????
-
-## M1 ?????
-- ??? `/showcase/function-vertex`?`/showcase/geometry-helper`?
-- `npm run typecheck` ???
-- `npm run build` ???
-- `npm exec playwright test` ?????????
-- browser tool ?? ?Extension connection timeout????????????
+## M1 第一批验收收口
+- 验收方式已切为“AI 自动截图 + 自动断言”，不依赖 browser extension。
+- 验收范围仅限 `/showcase/function-vertex` 与 `/showcase/geometry-helper`。
+- 验收结论与截图路径写入 `docs/M1_FIRST_BATCH_ACCEPTANCE.md`。
