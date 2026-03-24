@@ -1,4 +1,4 @@
-# HANDOFF
+﻿# HANDOFF
 
 ## Read First
 开始下一轮前，按这个顺序读取：
@@ -11,8 +11,8 @@
 
 ## Current Repository State
 - 分支：`feature/mvp-init`
-- 当前状态：`A7 Heartbeat Lite` 最小收口已完成（e2e 测试环境切 mock，heartbeat.spec.ts 4/4 通过）
-- 当前验证：`npm run typecheck`、`npm run build` 通过；`npm exec playwright test` 29 passed，2 failed（失败为 recheck/recheck-product 的截图步骤 Protocol error，非 A7 逻辑）
+- 当前状态：A7/W1 收口已完成，当前进入 `M1 数学交互演示模块（直播展示样板层）`。
+- 最近验证：`npm run typecheck`、`npm run build` 通过；`npm exec playwright test` 29 passed，2 failed（失败为 recheck/recheck-product 的截图步骤 Protocol error，非 A7 逻辑）
 
 ## D1 已完成什么
 1. 上传接口现在只生成 staging draft，不再直接写正式学生档案。
@@ -37,7 +37,12 @@
 - 处理一个 open 项后刷新：测试中 relax 了 strict count(0) 断言，因 PATCH recheck-tasks 的 syncHeartbeatForStudent 在 e2e 环境下消费验证偶发不稳定，待后续排查。
 
 ## Recommended Next Round
-A7 控制中心“今日待处理项”已挂载，下一轮可：
-1. 排查 recheck/recheck-product 的截图 Protocol error（环境问题）。
-2. 排查 stabilize 后 heartbeat 事件消费验证不稳定根因。
-3. 按 CURRENT_SPRINT 完成标准做 browser 验收与 push。
+M1 进入“直播展示样板层”落地阶段，下一步：
+1. 按 `docs/M1_INTERACTIVE_MATH_DEMOS.md` 落地 4 个展示页（仅 /showcase 或 /demo）。
+2. 保持主链不动，完成桌面端优先的稳定交互。
+3. 实施完后按规则跑 `npm run typecheck` / `npm run build` / `npm exec playwright test` 并 push 到 `github/gitee` feature 分支。
+
+## M1 ????
+- M1 ?? / ??? / ?? / ?????????? `docs/M1_INTERACTIVE_MATH_DEMOS.md`?
+- ????? M1 ????????????1?????1?
+- ????????1?????1????????
